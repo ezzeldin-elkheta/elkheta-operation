@@ -3,7 +3,8 @@ export default async function handler(req, res) {
     method: req.method,
     url: req.url,
     query: req.query,
-    path: req.query.path
+    path: req.query.path,
+    contentLength: req.headers['content-length'] ? `${(parseInt(req.headers['content-length']) / (1024 * 1024)).toFixed(2)} MB` : 'unknown'
   });
 
   // Enable CORS
@@ -13,6 +14,20 @@ export default async function handler(req, res) {
   
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
+  }
+  
+  // Check for large payloads early
+  const contentLength = parseInt(req.headers['content-length'] || '0');
+  const MAX_PAYLOAD_SIZE = 3 * 1024 * 1024; // 3MB limit for Vercel
+  
+  if (contentLength > MAX_PAYLOAD_SIZE) {
+    console.error(`[Video Proxy] Payload too large: ${(contentLength / (1024 * 1024)).toFixed(2)} MB exceeds ${(MAX_PAYLOAD_SIZE / (1024 * 1024)).toFixed(2)} MB limit`);
+    return res.status(413).json({
+      error: 'Payload Too Large',
+      message: `File size ${(contentLength / (1024 * 1024)).toFixed(2)} MB exceeds Vercel's ${(MAX_PAYLOAD_SIZE / (1024 * 1024)).toFixed(2)} MB limit. Use direct upload to Bunny.net for large files.`,
+      fileSizeMB: (contentLength / (1024 * 1024)).toFixed(2),
+      maxSizeMB: (MAX_PAYLOAD_SIZE / (1024 * 1024)).toFixed(2)
+    });
   }
   
   try {

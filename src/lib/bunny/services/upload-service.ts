@@ -477,9 +477,12 @@ export class UploadService {
     signal?: AbortSignal,
     settings?: UploadSettings
   ): Promise<void> {
-    // Vercel Serverless Function payload limit is 4.5MB
-    const VERCEL_PAYLOAD_LIMIT = 4.5 * 1024 * 1024; // 4.5MB in bytes
+    // Vercel Serverless Function payload limit is 4.5MB, but we'll be more conservative
+    // Use 3MB as threshold to avoid any potential issues with Vercel limits
+    const VERCEL_PAYLOAD_LIMIT = 3 * 1024 * 1024; // 3MB in bytes
     const useDirectUpload = file.size > VERCEL_PAYLOAD_LIMIT;
+    
+    console.log(`[UploadService-Stream] File size: ${(file.size / (1024 * 1024)).toFixed(2)} MB, Vercel limit: ${(VERCEL_PAYLOAD_LIMIT / (1024 * 1024)).toFixed(2)} MB, using direct upload: ${useDirectUpload}`);
     
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
@@ -614,13 +617,22 @@ export class UploadService {
     const maxRetries = 2; // Total 3 attempts (1 initial + 2 retries)
     let attempt = 0;
 
+    // Force XHR (direct upload) for large files to avoid Vercel payload limits
+    const VERCEL_PAYLOAD_LIMIT = 3 * 1024 * 1024; // 3MB limit
+    const isLargeFile = file.size > VERCEL_PAYLOAD_LIMIT;
+    
+    if (isLargeFile) {
+      console.log(`[UploadService-Retry] Large file detected (${(file.size / (1024 * 1024)).toFixed(2)} MB), forcing XHR direct upload to avoid Vercel limits`);
+      useStreaming = false; // Force XHR for large files
+    }
+
     while (attempt <= maxRetries) {
       try {
-        const uploadMethod = useStreaming && typeof file.stream === 'function'
+        const uploadMethod = useStreaming && typeof file.stream === 'function' && !isLargeFile
           ? this.uploadVideoContentStream
           : this.uploadVideoContentXHR;
 
-        console.log(`[UploadService-Retry] Attempt ${attempt + 1}/${maxRetries + 1} using ${useStreaming ? 'stream' : 'XHR'} for GUID: ${guid}`);
+        console.log(`[UploadService-Retry] Attempt ${attempt + 1}/${maxRetries + 1} using ${useStreaming && !isLargeFile ? 'stream' : 'XHR'} for GUID: ${guid}, file size: ${(file.size / (1024 * 1024)).toFixed(2)} MB`);
         await uploadMethod(file, libraryId, guid, apiKey, onProgress, signal, settings);
         return; // Success
       } catch (error) {
@@ -989,11 +1001,19 @@ export class UploadService {
       console.log(`[UploadService] Using direct upload for ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`);
       const { guid, title } = await this.createVideoEntry(file.name, libraryId, apiKey, collectionId);
       
+      // Force XHR for large files to avoid Vercel payload limits
+      const VERCEL_PAYLOAD_LIMIT = 3 * 1024 * 1024; // 3MB limit
+      const isLargeFile = file.size > VERCEL_PAYLOAD_LIMIT;
+      
       // تحديد أسلوب الرفع المباشر
-      const useStreamUpload = settings?.useStreaming !== false && typeof file.stream === 'function' && file.size < maxDirectSizeBytes;
+      const useStreamUpload = !isLargeFile && settings?.useStreaming !== false && typeof file.stream === 'function' && file.size < maxDirectSizeBytes;
+      
+      if (isLargeFile) {
+        console.log(`[UploadService] Large file detected (${(file.size / (1024 * 1024)).toFixed(2)} MB), forcing XHR direct upload to avoid Vercel limits`);
+      }
       
       try {
-        console.log(`[UploadService] Using ${useStreamUpload ? 'stream' : 'XHR'} upload method`);
+        console.log(`[UploadService] Using ${useStreamUpload ? 'stream' : 'XHR'} upload method for file size: ${(file.size / (1024 * 1024)).toFixed(2)} MB`);
         await this.uploadVideoContentWithRetry(file, libraryId, guid, apiKey, onProgress, signal, useStreamUpload, settings);
         return { guid, title };
       } catch (uploadError) {
@@ -1045,7 +1065,17 @@ export class UploadService {
 
       // Create video entry
       const { guid, title } = await this.createVideoEntry(file.name, libraryId, apiKey, collectionId);
-      await this.uploadVideoContentWithRetry(file, libraryId, guid, apiKey, onProgress, signal, true);
+      
+      // Force XHR for large files to avoid Vercel payload limits
+      const VERCEL_PAYLOAD_LIMIT = 3 * 1024 * 1024; // 3MB limit
+      const isLargeFile = file.size > VERCEL_PAYLOAD_LIMIT;
+      const useStreaming = !isLargeFile; // Only use streaming for small files
+      
+      if (isLargeFile) {
+        console.log(`[UploadService-Streams] Large file detected (${(file.size / (1024 * 1024)).toFixed(2)} MB), forcing XHR direct upload to avoid Vercel limits`);
+      }
+      
+      await this.uploadVideoContentWithRetry(file, libraryId, guid, apiKey, onProgress, signal, useStreaming);
 
       return { guid, title };
     } catch (error) {
