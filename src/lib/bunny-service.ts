@@ -286,4 +286,26 @@ export class BunnyService {
         if (lib.apiKey) {
           this.httpClient.setLibraryApiKey(lib.id, lib.apiKey);
           cache.set(`library_${lib.id}_data`, lib);
-          cache.set(`
+          secureLog('Cached API key for library', { libraryId: lib.id });
+        }
+      });
+
+      // Create library data object
+      const libraryData = {
+        lastUpdated: new Date().toISOString(),
+        libraries: libraries,
+        mainApiKey
+      };
+
+      // Save to secure storage
+      await dataStorage.saveLibraryData(libraryData);
+      
+      return libraryData;
+    } catch (error) {
+      console.error("Error fetching library data:", error);
+      throw error;
+    }
+  }
+}
+
+export const bunnyService = new BunnyService();
