@@ -9,7 +9,7 @@ import { SecureApiKeyStorage, SecureDataStorage, SecureCacheManager } from '../l
 import { useToast } from '../hooks/use-toast';
 
 export function SecurityManager() {
-  const [migrationStatus, setMigrationStatus] = useState(SecurityMigration.getMigrationStatus());
+  const [migrationStatus, setMigrationStatus] = useState(() => SecurityMigration.getMigrationStatus());
   const [isLoading, setIsLoading] = useState(false);
   const [showSensitiveData, setShowSensitiveData] = useState(false);
   const { toast } = useToast();

@@ -39,14 +39,14 @@ function encryptData(data: string): string {
     encrypted += String.fromCharCode(encryptedChar);
   }
   
-  // Return encrypted data with salt
-  return btoa(salt + ':' + encrypted);
+  // Return encrypted data with salt using safe encoding
+  return safeBase64Encode(salt + ':' + encrypted);
 }
 
 // Decrypt data
 function decryptData(encryptedData: string): string {
   try {
-    const decoded = atob(encryptedData);
+    const decoded = safeBase64Decode(encryptedData);
     const [salt, encrypted] = decoded.split(':');
     
     if (!salt || !encrypted) {
@@ -68,6 +68,38 @@ function decryptData(encryptedData: string): string {
   } catch (error) {
     console.error('[Crypto] Decryption failed:', error);
     return '';
+  }
+}
+
+// Safe base64 encoding that handles non-Latin1 characters
+function safeBase64Encode(str: string): string {
+  try {
+    // Use TextEncoder to handle Unicode characters
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(str);
+    const binaryString = Array.from(bytes, byte => String.fromCharCode(byte)).join('');
+    return btoa(binaryString);
+  } catch (error) {
+    console.error('[Crypto] Safe base64 encoding failed:', error);
+    // Fallback to simple encoding
+    return btoa(unescape(encodeURIComponent(str)));
+  }
+}
+
+// Safe base64 decoding
+function safeBase64Decode(str: string): string {
+  try {
+    const binaryString = atob(str);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    const decoder = new TextDecoder();
+    return decoder.decode(bytes);
+  } catch (error) {
+    console.error('[Crypto] Safe base64 decoding failed:', error);
+    // Fallback to simple decoding
+    return decodeURIComponent(escape(atob(str)));
   }
 }
 
