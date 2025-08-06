@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library Data Debug Tool</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        .button:hover {
+            background: #0056b3;
+        }
+        
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .warning { color: #ffc107; }
+        .info { color: #17a2b8; }
+        
+        .log-area {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .library-item {
+            background: #f8f9fa;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Library Data Debug Tool</h1>
+    <p>هذه الأداة تساعد في تشخيص حالة بيانات المكتبات و API Keys</p>
+
+    <div class="card">
+        <h2>🎛️ التحكم</h2>
+        <button class="button" onclick="checkDataStatus()">فحص حالة البيانات</button>
+        <button class="button" onclick="testLibraryKeys()">اختبار مفاتيح المكتبات</button>
+        <button class="button" onclick="clearAllData()">مسح جميع البيانات</button>
+        <button class="button" onclick="exportData()">تصدير البيانات</button>
+    </div>
+
+    <div class="status-grid">
+        <div class="card">
+            <h3>📊 حالة البيانات</h3>
+            <div id="dataStatus"></div>
+        </div>
+        
+        <div class="card">
+            <h3>🔑 حالة API Keys</h3>
+            <div id="keyStatus"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>📝 سجل الأحداث</h3>
+        <div id="logArea" class="log-area"></div>
+        <button class="button" onclick="clearLog()">مسح السجل</button>
+    </div>
+
+    <div class="card">
+        <h3>📚 تفاصيل المكتبات</h3>
+        <div id="libraryDetails"></div>
+    </div>
+
+    <script>
+        let logContent = '';
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString('ar-EG');
+            const logEntry = `[${timestamp}] ${message}\n`;
+            logContent += logEntry;
+            
+            const logArea = document.getElementById('logArea');
+            logArea.textContent = logContent;
+            logArea.scrollTop = logArea.scrollHeight;
+            
+            console.log(`[LibraryDebug] ${message}`);
+        }
+
+        function clearLog() {
+            logContent = '';
+            document.getElementById('logArea').textContent = '';
+        }
+
+        function checkDataStatus() {
+            log('🔍 بدء فحص حالة البيانات...', 'info');
+            
+            const statusDiv = document.getElementById('dataStatus');
+            let statusHtml = '';
+            
+            try {
+                // Check localStorage
+                const libraryData = localStorage.getItem('library_data');
+                const appCache = localStorage.getItem('app_cache');
+                
+                if (libraryData) {
+                    try {
+                        const parsed = JSON.parse(libraryData);
+                        const libraryCount = parsed.libraries?.length || 0;
+                        statusHtml += `<div class="success">✅ library_data: ${libraryCount} مكتبة</div>`;
+                        log(`✅ وُجدت ${libraryCount} مكتبة في library_data`);
+                        
+                        if (parsed.mainApiKey) {
+                            statusHtml += `<div class="success">✅ mainApiKey موجود</div>`;
+                            log(`✅ mainApiKey موجود: ${parsed.mainApiKey.substring(0, 8)}...`);
+                        } else {
+                            statusHtml += `<div class="error">❌ mainApiKey غير موجود</div>`;
+                            log(`❌ mainApiKey غير موجود`);
+                        }
+                    } catch (e) {
+                        statusHtml += `<div class="error">❌ library_data: خطأ في التحليل</div>`;
+                        log(`❌ خطأ في تحليل library_data: ${e.message}`);
+                    }
+                } else {
+                    statusHtml += `<div class="error">❌ library_data: غير موجود</div>`;
+                    log(`❌ library_data غير موجود في localStorage`);
+                }
+                
+                if (appCache) {
+                    try {
+                        const parsed = JSON.parse(appCache);
+                        const keyCount = Object.keys(parsed).filter(k => k.includes('_api')).length;
+                        statusHtml += `<div class="info">📦 app_cache: ${keyCount} مفتاح API</div>`;
+                        log(`📦 وُجد ${keyCount} مفتاح API في app_cache`);
+                    } catch (e) {
+                        statusHtml += `<div class="warning">⚠️ app_cache: خطأ في التحليل</div>`;
+                        log(`⚠️ خطأ في تحليل app_cache: ${e.message}`);
+                    }
+                } else {
+                    statusHtml += `<div class="warning">⚠️ app_cache: غير موجود</div>`;
+                    log(`⚠️ app_cache غير موجود`);
+                }
+                
+                statusDiv.innerHTML = statusHtml;
+                log('✅ انتهى فحص حالة البيانات');
+                
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="error">❌ خطأ: ${error.message}</div>`;
+                log(`❌ خطأ أثناء فحص البيانات: ${error.message}`);
+            }
+        }
+
+        function testLibraryKeys() {
+            log('🔑 بدء اختبار مفاتيح المكتبات...', 'info');
+            
+            const keyStatusDiv = document.getElementById('keyStatus');
+            const libraryDetailsDiv = document.getElementById('libraryDetails');
+            let keyStatusHtml = '';
+            let detailsHtml = '';
+            
+            try {
+                const libraryData = localStorage.getItem('library_data');
+                if (!libraryData) {
+                    keyStatusHtml = '<div class="error">❌ لا توجد بيانات مكتبات</div>';
+                    log('❌ لا توجد بيانات مكتبات للاختبار');
+                    keyStatusDiv.innerHTML = keyStatusHtml;
+                    return;
+                }
+                
+                const parsed = JSON.parse(libraryData);
+                const libraries = parsed.libraries || [];
+                
+                let validKeys = 0;
+                let invalidKeys = 0;
+                
+                libraries.forEach(lib => {
+                    const hasKey = !!lib.apiKey;
+                    const keyValid = hasKey && lib.apiKey.length > 30;
+                    
+                    if (hasKey && keyValid) {
+                        validKeys++;
+                    } else {
+                        invalidKeys++;
+                    }
+                    
+                    const keyPreview = hasKey ? `${lib.apiKey.substring(0, 8)}...` : 'غير موجود';
+                    const status = keyValid ? '✅' : '❌';
+                    
+                    detailsHtml += `
+                        <div class="library-item">
+                            <strong>${status} ${lib.name} (${lib.id})</strong><br>
+                            مفتاح API: ${keyPreview}<br>
+                            Collections: ${lib.collections?.length || 0}
+                        </div>
+                    `;
+                    
+                    log(`${status} ${lib.name}: ${keyPreview}`);
+                });
+                
+                keyStatusHtml = `
+                    <div class="success">✅ مفاتيح صالحة: ${validKeys}</div>
+                    <div class="error">❌ مفاتيح غير صالحة: ${invalidKeys}</div>
+                    <div class="info">📊 إجمالي المكتبات: ${libraries.length}</div>
+                `;
+                
+                keyStatusDiv.innerHTML = keyStatusHtml;
+                libraryDetailsDiv.innerHTML = detailsHtml;
+                
+                log(`✅ انتهى اختبار المفاتيح: ${validKeys} صالح، ${invalidKeys} غير صالح`);
+                
+            } catch (error) {
+                keyStatusDiv.innerHTML = `<div class="error">❌ خطأ: ${error.message}</div>`;
+                log(`❌ خطأ أثناء اختبار المفاتيح: ${error.message}`);
+            }
+        }
+
+        function clearAllData() {
+            if (!confirm('هل أنت متأكد من مسح جميع البيانات؟')) {
+                return;
+            }
+            
+            log('🗑️ بدء مسح جميع البيانات...', 'warning');
+            
+            try {
+                // Clear localStorage items
+                const itemsToRemove = [
+                    'library_data',
+                    'app_cache',
+                    'bunny_api_key',
+                    'bunny_library_api_keys',
+                    'lib_data_raw'
+                ];
+                
+                itemsToRemove.forEach(item => {
+                    localStorage.removeItem(item);
+                    log(`🗑️ تم مسح: ${item}`);
+                });
+                
+                // Clear sessionStorage
+                sessionStorage.clear();
+                log('🗑️ تم مسح sessionStorage');
+                
+                log('✅ تم مسح جميع البيانات بنجاح');
+                
+                // Refresh status
+                setTimeout(() => {
+                    checkDataStatus();
+                    testLibraryKeys();
+                }, 100);
+                
+            } catch (error) {
+                log(`❌ خطأ أثناء مسح البيانات: ${error.message}`);
+            }
+        }
+
+        function exportData() {
+            log('📤 بدء تصدير البيانات...', 'info');
+            
+            try {
+                const data = {
+                    timestamp: new Date().toISOString(),
+                    localStorage: {},
+                    sessionStorage: {}
+                };
+                
+                // Export localStorage
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    data.localStorage[key] = localStorage.getItem(key);
+                }
+                
+                // Export sessionStorage
+                for (let i = 0; i < sessionStorage.length; i++) {
+                    const key = sessionStorage.key(i);
+                    data.sessionStorage[key] = sessionStorage.getItem(key);
+                }
+                
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `library-data-export-${Date.now()}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                log('✅ تم تصدير البيانات بنجاح');
+                
+            } catch (error) {
+                log(`❌ خطأ أثناء تصدير البيانات: ${error.message}`);
+            }
+        }
+
+        // Auto-run initial checks
+        document.addEventListener('DOMContentLoaded', () => {
+            log('🚀 تم تحميل أداة التشخيص');
+            setTimeout(() => {
+                checkDataStatus();
+                testLibraryKeys();
+            }, 500);
+        });
+    </script>
+</body>
+</html>

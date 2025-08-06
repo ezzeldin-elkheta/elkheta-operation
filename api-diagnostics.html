@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>أداة تشخيص وإصلاح مفاتيح API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .error { color: #d32f2f; }
+        .success { color: #2e7d32; }
+        .warning { color: #f57c00; }
+        .info { color: #1976d2; }
+        button {
+            background: #1976d2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #1565c0; }
+        button.danger { background: #d32f2f; }
+        button.danger:hover { background: #c62828; }
+        pre {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 4px;
+            overflow: auto;
+            font-size: 12px;
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .log-container {
+            max-height: 400px;
+            overflow-y: auto;
+            background: #000;
+            color: #0f0;
+            padding: 10px;
+            font-family: monospace;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 أداة تشخيص وإصلاح مفاتيح Bunny.net API</h1>
+    
+    <div class="card">
+        <h2>التشخيص السريع</h2>
+        <button onclick="runFullDiagnostics()">🔍 تشخيص شامل</button>
+        <button onclick="clearAllCaches()" class="danger">🗑️ حذف جميع الكاشات</button>
+        <button onclick="testUpload()">📤 اختبار الرفع</button>
+        <button onclick="forceRefresh()">🔄 إعادة تحديث من البيئة</button>
+        <div id="quickDiagnostics"></div>
+    </div>
+
+    <div class="status-grid">
+        <div class="card">
+            <h3>حالة مفتاح البيئة</h3>
+            <div id="envStatus"></div>
+        </div>
+        
+        <div class="card">
+            <h3>حالة Cache</h3>
+            <div id="cacheStatus"></div>
+        </div>
+        
+        <div class="card">
+            <h3>اختبار API</h3>
+            <div id="apiTest"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>سجل الأحداث</h2>
+        <button onclick="clearLogs()">مسح السجل</button>
+        <div id="logs" class="log-container"></div>
+    </div>
+
+    <script>
+        let logContainer = document.getElementById('logs');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString('ar');
+            const colorMap = {
+                error: '#ff4444',
+                success: '#44ff44', 
+                warning: '#ffaa44',
+                info: '#44aaff'
+            };
+            
+            const entry = document.createElement('div');
+            entry.style.color = colorMap[type] || '#0f0';
+            entry.textContent = `[${timestamp}] ${message}`;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        function clearLogs() {
+            logContainer.innerHTML = '';
+        }
+
+        async function runFullDiagnostics() {
+            log('بدء التشخيص الشامل...', 'info');
+            
+            // Check environment
+            await checkEnvironment();
+            
+            // Check cache
+            await checkCache();
+            
+            // Test API
+            await testApi();
+            
+            log('انتهى التشخيص الشامل', 'success');
+        }
+
+        async function checkEnvironment() {
+            log('فحص متغيرات البيئة...', 'info');
+            
+            try {
+                // Check if we're in client or server context
+                const envKey = import.meta?.env?.VITE_BUNNY_API_KEY || 
+                              window?.__env?.VITE_BUNNY_API_KEY;
+                
+                const envStatus = document.getElementById('envStatus');
+                
+                if (envKey) {
+                    envStatus.innerHTML = `
+                        <div class="success">✅ مفتاح البيئة موجود</div>
+                        <div>الطول: ${envKey.length} حرف</div>
+                        <div>المعاينة: ${envKey.substring(0, 4)}...${envKey.substring(envKey.length - 4)}</div>
+                    `;
+                    log(`مفتاح البيئة موجود: ${envKey.length} حرف`, 'success');
+                } else {
+                    envStatus.innerHTML = '<div class="error">❌ مفتاح البيئة غير موجود</div>';
+                    log('مفتاح البيئة غير موجود!', 'error');
+                }
+                
+                // Test format
+                if (envKey && envKey.length === 36 && /^[a-f0-9-]+$/i.test(envKey)) {
+                    log('تنسيق مفتاح البيئة صحيح (UUID)', 'success');
+                } else if (envKey) {
+                    log('تنسيق مفتاح البيئة قد يكون غير صحيح', 'warning');
+                }
+                
+            } catch (error) {
+                log(`خطأ في فحص البيئة: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkCache() {
+            log('فحص Cache...', 'info');
+            
+            try {
+                const cacheStatus = document.getElementById('cacheStatus');
+                let cacheInfo = [];
+                
+                // Check localStorage
+                const appCache = localStorage.getItem('app_cache');
+                const libraryData = localStorage.getItem('library_data');
+                const bunnyApiKey = localStorage.getItem('bunny_api_key');
+                
+                if (appCache) {
+                    try {
+                        const parsed = JSON.parse(appCache);
+                        const apiKeys = Object.keys(parsed).filter(key => key.includes('_api'));
+                        cacheInfo.push(`app_cache: ${apiKeys.length} مفاتيح API`);
+                        log(`app_cache يحتوي على ${apiKeys.length} مفاتيح`, 'info');
+                    } catch (e) {
+                        cacheInfo.push('app_cache: خطأ في التحليل');
+                        log('خطأ في تحليل app_cache', 'error');
+                    }
+                } else {
+                    cacheInfo.push('app_cache: فارغ');
+                }
+                
+                if (libraryData) {
+                    try {
+                        const parsed = JSON.parse(libraryData);
+                        cacheInfo.push(`library_data: ${parsed.libraries?.length || 0} مكتبات`);
+                        log(`library_data يحتوي على ${parsed.libraries?.length || 0} مكتبات`, 'info');
+                    } catch (e) {
+                        cacheInfo.push('library_data: خطأ في التحليل');
+                        log('خطأ في تحليل library_data', 'error');
+                    }
+                } else {
+                    cacheInfo.push('library_data: فارغ');
+                }
+                
+                if (bunnyApiKey) {
+                    cacheInfo.push(`bunny_api_key: ${bunnyApiKey.length} حرف`);
+                    log(`bunny_api_key موجود: ${bunnyApiKey.length} حرف`, 'info');
+                } else {
+                    cacheInfo.push('bunny_api_key: غير موجود');
+                }
+                
+                cacheStatus.innerHTML = cacheInfo.map(info => `<div>${info}</div>`).join('');
+                
+            } catch (error) {
+                log(`خطأ في فحص Cache: ${error.message}`, 'error');
+            }
+        }
+
+        async function testApi() {
+            log('اختبار API...', 'info');
+            
+            try {
+                const apiTest = document.getElementById('apiTest');
+                apiTest.innerHTML = '<div>⏳ جاري الاختبار...</div>';
+                
+                // Test diagnostics endpoint
+                const response = await fetch('/api/diagnostics');
+                const result = await response.json();
+                
+                if (response.ok) {
+                    const status = result.bunnyApiTest?.success ? 'success' : 'error';
+                    const message = result.bunnyApiTest?.message || 'لا توجد نتيجة';
+                    
+                    apiTest.innerHTML = `
+                        <div class="${status}">${result.bunnyApiTest?.success ? '✅' : '❌'} اختبار API</div>
+                        <div>الرسالة: ${message}</div>
+                        <div>المفتاح المستخدم: ${result.apiKey?.configured ? 'موجود' : 'غير موجود'}</div>
+                    `;
+                    
+                    log(`اختبار API: ${result.bunnyApiTest?.success ? 'نجح' : 'فشل'} - ${message}`, status);
+                } else {
+                    apiTest.innerHTML = '<div class="error">❌ فشل في الوصول لخدمة التشخيص</div>';
+                    log('فشل في الوصول لخدمة التشخيص', 'error');
+                }
+                
+            } catch (error) {
+                log(`خطأ في اختبار API: ${error.message}`, 'error');
+                document.getElementById('apiTest').innerHTML = `<div class="error">❌ خطأ: ${error.message}</div>`;
+            }
+        }
+
+        async function clearAllCaches() {
+            log('حذف جميع الكاشات...', 'warning');
+            
+            try {
+                // Clear localStorage
+                ['app_cache', 'library_data', 'bunny_api_key', 'default_api_key'].forEach(key => {
+                    localStorage.removeItem(key);
+                    log(`تم حذف ${key} من localStorage`, 'info');
+                });
+                
+                // Clear sessionStorage
+                sessionStorage.clear();
+                log('تم حذف sessionStorage', 'info');
+                
+                // Call server-side clear
+                try {
+                    const response = await fetch('/api/clear-cache', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    
+                    if (response.ok) {
+                        log('تم حذف cache من الخادم', 'success');
+                    } else {
+                        log('فشل في حذف cache من الخادم', 'warning');
+                    }
+                } catch (e) {
+                    log('خطأ في الاتصال بخدمة حذف cache', 'warning');
+                }
+                
+                log('تم حذف جميع الكاشات بنجاح', 'success');
+                
+                // Refresh diagnostics
+                setTimeout(runFullDiagnostics, 500);
+                
+            } catch (error) {
+                log(`خطأ في حذف الكاشات: ${error.message}`, 'error');
+            }
+        }
+
+        async function testUpload() {
+            log('اختبار الرفع...', 'info');
+            
+            try {
+                // Test create video endpoint
+                const testData = {
+                    title: 'Test Video',
+                    libraryId: '301922'
+                };
+                
+                const response = await fetch('/api/proxy/video/library/301922/videos', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'AccessKey': import.meta?.env?.VITE_BUNNY_API_KEY || window?.__env?.VITE_BUNNY_API_KEY || ''
+                    },
+                    body: JSON.stringify(testData)
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    log(`اختبار الرفع نجح: ${result.guid}`, 'success');
+                } else {
+                    const error = await response.text();
+                    log(`اختبار الرفع فشل: ${response.status} - ${error}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`خطأ في اختبار الرفع: ${error.message}`, 'error');
+            }
+        }
+
+        async function forceRefresh() {
+            log('إعادة تحديث من البيئة...', 'info');
+            
+            await clearAllCaches();
+            
+            setTimeout(() => {
+                log('إعادة تحميل الصفحة...', 'info');
+                window.location.reload();
+            }, 1000);
+        }
+
+        // Auto-run diagnostics on load
+        window.addEventListener('load', () => {
+            log('أداة التشخيص جاهزة', 'success');
+            runFullDiagnostics();
+        });
+    </script>
+</body>
+</html>

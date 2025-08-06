@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>اختبار API الشامل - بني نت</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+            direction: rtl;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        .section h3 {
+            color: #0066cc;
+            margin-top: 0;
+        }
+        .test-button {
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            transition: background-color 0.3s;
+        }
+        .test-button:hover {
+            background-color: #0052a3;
+        }
+        .test-button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .success {
+            color: #008000;
+            font-weight: bold;
+        }
+        .error {
+            color: #cc0000;
+            font-weight: bold;
+        }
+        .warning {
+            color: #ff8800;
+            font-weight: bold;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: white;
+            border-left: 4px solid #0066cc;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .input-group {
+            margin: 10px 0;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-left: 8px;
+        }
+        .status-success { background-color: #008000; }
+        .status-error { background-color: #cc0000; }
+        .status-warning { background-color: #ff8800; }
+        .status-info { background-color: #0066cc; }
+        .summary {
+            background-color: #e7f3ff;
+            border: 1px solid #0066cc;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 اختبار API الشامل - بني نت</h1>
+            <p>اختبار جميع endpoints والتأكد من عملها بشكل صحيح</p>
+        </div>
+
+        <div class="summary">
+            <h3>📊 ملخص الحالة</h3>
+            <div id="summary">يرجى بدء الاختبارات لعرض الملخص</div>
+        </div>
+
+        <div class="section">
+            <h3>🔧 إعدادات الاختبار</h3>
+            <div class="input-group">
+                <label for="apiKey">مفتاح API:</label>
+                <input type="password" id="apiKey" placeholder="أدخل مفتاح Bunny API">
+            </div>
+            <div class="input-group">
+                <label for="libraryId">معرف المكتبة (للاختبار):</label>
+                <input type="text" id="libraryId" placeholder="أدخل معرف مكتبة صالح">
+            </div>
+            <button class="test-button" onclick="runAllTests()">🔄 تشغيل جميع الاختبارات</button>
+            <button class="test-button" onclick="clearResults()">🗑️ مسح النتائج</button>
+        </div>
+
+        <div class="grid">
+            <div class="section">
+                <h3>🔍 اختبارات التشخيص</h3>
+                <button class="test-button" onclick="testDiagnostics()">تشخيص النظام</button>
+                <button class="test-button" onclick="testAuthCheck()">فحص التفويض</button>
+                <button class="test-button" onclick="testAllEndpoints()">فحص جميع المسارات</button>
+                <div id="diagnostics-result" class="result" style="display: none;"></div>
+            </div>
+
+            <div class="section">
+                <h3>📚 اختبارات المكتبات</h3>
+                <button class="test-button" onclick="testLibraries()">جلب المكتبات</button>
+                <button class="test-button" onclick="testLibraryDetails()">تفاصيل مكتبة</button>
+                <div id="libraries-result" class="result" style="display: none;"></div>
+            </div>
+
+            <div class="section">
+                <h3>📁 اختبارات المجموعات</h3>
+                <button class="test-button" onclick="testCollections()">جلب المجموعات</button>
+                <button class="test-button" onclick="testCreateCollection()">إنشاء مجموعة</button>
+                <div id="collections-result" class="result" style="display: none;"></div>
+            </div>
+
+            <div class="section">
+                <h3>🎥 اختبارات الفيديو</h3>
+                <button class="test-button" onclick="testVideos()">جلب الفيديوهات</button>
+                <button class="test-button" onclick="testCreateVideo()">إنشاء فيديو</button>
+                <div id="videos-result" class="result" style="display: none;"></div>
+            </div>
+
+            <div class="section">
+                <h3>📋 اختبارات الشيت</h3>
+                <button class="test-button" onclick="testSheetUpdate()">تحديث الشيت</button>
+                <div id="sheets-result" class="result" style="display: none;"></div>
+            </div>
+
+            <div class="section">
+                <h3>⬆️ اختبارات الرفع</h3>
+                <div class="input-group">
+                    <label for="testFile">اختر ملف للاختبار:</label>
+                    <input type="file" id="testFile" accept="video/*">
+                </div>
+                <button class="test-button" onclick="testUpload()">اختبار الرفع</button>
+                <div id="upload-result" class="result" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let testResults = {};
+        
+        function getApiKey() {
+            return document.getElementById('apiKey').value || 'your-default-key';
+        }
+        
+        function getLibraryId() {
+            return document.getElementById('libraryId').value || '123456';
+        }
+        
+        function showResult(elementId, content, status = 'info') {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.innerHTML = content;
+            element.className = `result ${status}`;
+        }
+        
+        function updateSummary() {
+            const total = Object.keys(testResults).length;
+            const passed = Object.values(testResults).filter(r => r.success).length;
+            const failed = total - passed;
+            
+            const summaryHtml = `
+                <div style="display: flex; justify-content: space-around; text-align: center;">
+                    <div>
+                        <strong>المجموع</strong><br>
+                        <span style="font-size: 24px; color: #0066cc;">${total}</span>
+                    </div>
+                    <div>
+                        <strong>نجح</strong><br>
+                        <span style="font-size: 24px; color: #008000;">${passed}</span>
+                    </div>
+                    <div>
+                        <strong>فشل</strong><br>
+                        <span style="font-size: 24px; color: #cc0000;">${failed}</span>
+                    </div>
+                    <div>
+                        <strong>معدل النجاح</strong><br>
+                        <span style="font-size: 24px; color: #0066cc;">${total > 0 ? Math.round((passed/total)*100) : 0}%</span>
+                    </div>
+                </div>
+            `;
+            document.getElementById('summary').innerHTML = summaryHtml;
+        }
+        
+        async function makeRequest(url, options = {}) {
+            const apiKey = getApiKey();
+            const headers = {
+                'Content-Type': 'application/json',
+                'AccessKey': apiKey,
+                'accesskey': apiKey,
+                ...options.headers
+            };
+            
+            try {
+                const response = await fetch(url, {
+                    ...options,
+                    headers
+                });
+                
+                const responseText = await response.text();
+                let data;
+                
+                try {
+                    data = JSON.parse(responseText);
+                } catch (e) {
+                    data = { rawResponse: responseText };
+                }
+                
+                return {
+                    ok: response.ok,
+                    status: response.status,
+                    statusText: response.statusText,
+                    data,
+                    headers: Object.fromEntries(response.headers.entries())
+                };
+            } catch (error) {
+                return {
+                    ok: false,
+                    error: error.message
+                };
+            }
+        }
+        
+        async function testDiagnostics() {
+            try {
+                const result = await makeRequest('/api/diagnostics');
+                testResults.diagnostics = { success: result.ok };
+                
+                const content = `
+الحالة: ${result.ok ? '✅ نجح' : '❌ فشل'}
+الكود: ${result.status}
+البيانات:
+${JSON.stringify(result.data, null, 2)}
+                `;
+                showResult('diagnostics-result', content, result.ok ? 'success' : 'error');
+            } catch (error) {
+                testResults.diagnostics = { success: false };
+                showResult('diagnostics-result', `خطأ: ${error.message}`, 'error');
+            }
+            updateSummary();
+        }
+        
+        async function testAuthCheck() {
+            try {
+                const result = await makeRequest('/api/auth-check');
+                testResults.authCheck = { success: result.ok };
+                
+                const content = `
+الحالة: ${result.ok ? '✅ نجح' : '❌ فشل'}
+الكود: ${result.status}
+البيانات:
+${JSON.stringify(result.data, null, 2)}
+                `;
+                showResult('diagnostics-result', content, result.ok ? 'success' : 'error');
+            } catch (error) {
+                testResults.authCheck = { success: false };
+                showResult('diagnostics-result', `خطأ في فحص التفويض: ${error.message}`, 'error');
+            }
+            updateSummary();
+        }
+        
+        async function testAllEndpoints() {
+            try {
+                const result = await makeRequest('/api/test-endpoints');
+                testResults.allEndpoints = { success: result.ok };
+                
+                const content = `
+الحالة: ${result.ok ? '✅ نجح' : '❌ فشل'}
+الكود: ${result.status}
+النتائج:
+${JSON.stringify(result.data, null, 2)}
+                `;
+                showResult('diagnostics-result', content, result.ok ? 'success' : 'error');
+            } catch (error) {
+                testResults.allEndpoints = { success: false };
+                showResult('diagnostics-result', `خطأ في فحص المسارات: ${error.message}`, 'error');
+            }
+            updateSummary();
+        }
+        
+        async function testLibraries() {
+            try {
+                const result = await makeRequest('/api/proxy/base/videolibrary');
+                testResults.libraries = { success: result.ok };
+                
+                const content = `
+الحالة: ${result.ok ? '✅ نجح' : '❌ فشل'}
+الكود: ${result.status}
+عدد المكتبات: ${result.data?.items?.length || 0}
+البيانات:
+${JSON.stringify(result.data, null, 2)}
+                `;
+                showResult('libraries-result', content, result.ok ? 'success' : 'error');
+            } catch (error) {
+                testResults.libraries = { success: false };
+                showResult('libraries-result', `خطأ في جلب المكتبات: ${error.message}`, 'error');
+            }
+            updateSummary();
+        }
+        
+        async function testLibraryDetails() {
+            const libraryId = getLibraryId();
+            try {
+                const result = await makeRequest(`/api/proxy/base/videolibrary/${libraryId}`);
+                testResults.libraryDetails = { success: result.ok };
+                
+                const content = `
+الحالة: ${result.ok ? '✅ نجح' : '❌ فشل'}
+الكود: ${result.status}
+معرف المكتبة: ${libraryId}
+البيانات:
+${JSON.stringify(result.data, null, 2)}
+                `;
+                showResult('libraries-result', content, result.ok ? 'success' : 'error');
+            } catch (error) {
+                testResults.libraryDetails = { success: false };
+                showResult('libraries-result', `خطأ في تفاصيل المكتبة: ${error.message}`, 'error');
+            }
+            updateSummary();
+        }
+        
+        async function testCollections() {
+            const libraryId = getLibraryId();
+            try {
+                const result = await makeRequest(`/api/proxy/video/library/${libraryId}/collections`);
+                testResults.collections = { success: result.ok };
+                
+                const content = `
+الحالة: ${result.ok ? '✅ نجح' : '❌ فشل'}
+الكود: ${result.status}
+معرف المكتبة: ${libraryId}
+عدد المجموعات: ${result.data?.items?.length || 0}
+البيانات:
+${JSON.stringify(result.data, null, 2)}
+                `;
+                showResult('collections-result', content, result.ok ? 'success' : 'error');
+            } catch (error) {
+                testResults.collections = { success: false };
+                showResult('collections-result', `خطأ في جلب المجموعات: ${error.message}`, 'error');
+            }
+            updateSummary();
+        }
+        
+        async function testCreateCollection() {
+            const libraryId = getLibraryId();
+            const collectionName = `Test Collection ${Date.now()}`;
+            
+            try {
+                const result = await makeRequest(`/api/proxy/video/library/${libraryId}/collections`, {
+                    method: 'POST',
+                    body: JSON.stringify({ name: collectionName })
+                });
+                testResults.createCollection = { success: result.ok };
+                
+                const content = `
+الحالة: ${result.ok ? '✅ نجح' : '❌ فشل'}
+الكود: ${result.status}
+اسم المجموعة: ${collectionName}
+معرف المكتبة: ${libraryId}
+البيانات:
+${JSON.stringify(result.data, null, 2)}
+                `;
+                showResult('collections-result', content, result.ok ? 'success' : 'error');
+            } catch (error) {
+                testResults.createCollection = { success: false };
+                showResult('collections-result', `خطأ في إنشاء المجموعة: ${error.message}`, 'error');
+            }
+            updateSummary();
+        }
+        
+        async function testVideos() {
+            const libraryId = getLibraryId();
+            try {
+                const result = await makeRequest(`/api/proxy/video/library/${libraryId}/videos`);
+                testResults.videos = { success: result.ok };
+                
+                const content = `
+الحالة: ${result.ok ? '✅ نجح' : '❌ فشل'}
+الكود: ${result.status}
+معرف المكتبة: ${libraryId}
+عدد الفيديوهات: ${result.data?.items?.length || 0}
+البيانات:
+${JSON.stringify(result.data, null, 2)}
+                `;
+                showResult('videos-result', content, result.ok ? 'success' : 'error');
+            } catch (error) {
+                testResults.videos = { success: false };
+                showResult('videos-result', `خطأ في جلب الفيديوهات: ${error.message}`, 'error');
+            }
+            updateSummary();
+        }
+        
+        async function testCreateVideo() {
+            const libraryId = getLibraryId();
+            const videoTitle = `Test Video ${Date.now()}`;
+            
+            try {
+                const result = await makeRequest('/api/proxy/create-video', {
+                    method: 'POST',
+                    body: JSON.stringify({ 
+                        libraryId: libraryId,
+                        title: videoTitle 
+                    })
+                });
+                testResults.createVideo = { success: result.ok };
+                
+                const content = `
+الحالة: ${result.ok ? '✅ نجح' : '❌ فشل'}
+الكود: ${result.status}
+عنوان الفيديو: ${videoTitle}
+معرف المكتبة: ${libraryId}
+البيانات:
+${JSON.stringify(result.data, null, 2)}
+                `;
+                showResult('videos-result', content, result.ok ? 'success' : 'error');
+            } catch (error) {
+                testResults.createVideo = { success: false };
+                showResult('videos-result', `خطأ في إنشاء الفيديو: ${error.message}`, 'error');
+            }
+            updateSummary();
+        }
+        
+        async function testSheetUpdate() {
+            try {
+                const result = await makeRequest('/api/update-sheet', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        spreadsheetId: 'test-spreadsheet-id',
+                        sheetName: 'Test Sheet',
+                        values: [['Test', 'Data'], ['Row 2', 'Col 2']],
+                        range: 'A1:B2'
+                    })
+                });
+                testResults.sheetUpdate = { success: result.ok };
+                
+                const content = `
+الحالة: ${result.ok ? '✅ نجح' : '❌ فشل'}
+الكود: ${result.status}
+البيانات:
+${JSON.stringify(result.data, null, 2)}
+                `;
+                showResult('sheets-result', content, result.ok ? 'success' : 'error');
+            } catch (error) {
+                testResults.sheetUpdate = { success: false };
+                showResult('sheets-result', `خطأ في تحديث الشيت: ${error.message}`, 'error');
+            }
+            updateSummary();
+        }
+        
+        async function testUpload() {
+            const fileInput = document.getElementById('testFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showResult('upload-result', 'يرجى اختيار ملف للاختبار', 'warning');
+                return;
+            }
+            
+            try {
+                // Test upload preparation
+                const content = `
+🔄 اختبار رفع الملف:
+الملف: ${file.name}
+الحجم: ${(file.size / (1024 * 1024)).toFixed(2)} MB
+النوع: ${file.type}
+
+ملاحظة: هذا اختبار تجريبي للواجهة فقط
+الرفع الفعلي يتطلب تنفيذ كامل لخدمة TUS
+                `;
+                
+                testResults.upload = { success: true };
+                showResult('upload-result', content, 'success');
+            } catch (error) {
+                testResults.upload = { success: false };
+                showResult('upload-result', `خطأ في اختبار الرفع: ${error.message}`, 'error');
+            }
+            updateSummary();
+        }
+        
+        async function runAllTests() {
+            // Clear previous results
+            testResults = {};
+            
+            // Run all tests sequentially with delays
+            const tests = [
+                testDiagnostics,
+                testAuthCheck,
+                testAllEndpoints,
+                testLibraries,
+                testLibraryDetails,
+                testCollections,
+                testVideos,
+                testSheetUpdate
+            ];
+            
+            for (let i = 0; i < tests.length; i++) {
+                try {
+                    await tests[i]();
+                    // Small delay between tests
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                } catch (error) {
+                    console.error(`Test ${i} failed:`, error);
+                }
+            }
+            
+            // Show final summary
+            setTimeout(() => {
+                alert(`اكتملت جميع الاختبارات!\nالمجموع: ${Object.keys(testResults).length}\nنجح: ${Object.values(testResults).filter(r => r.success).length}`);
+            }, 1000);
+        }
+        
+        function clearResults() {
+            testResults = {};
+            const resultElements = document.querySelectorAll('.result');
+            resultElements.forEach(el => el.style.display = 'none');
+            document.getElementById('summary').innerHTML = 'يرجى بدء الاختبارات لعرض الملخص';
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('اختبار API الشامل جاهز للتشغيل');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bunny.net API Test Tool</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+    .card { background: #f5f5f5; border-radius: 5px; padding: 15px; margin-bottom: 20px; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; }
+    input, select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+    button { background: #4CAF50; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; }
+    button:hover { background: #45a049; }
+    pre { background: #eee; padding: 10px; border-radius: 4px; overflow: auto; }
+    .error { color: red; }
+    .success { color: green; }
+  </style>
+</head>
+<body>
+  <h1>Bunny.net API Test Tool</h1>
+  
+  <div class="card">
+    <h2>API Key Test</h2>
+    <div class="form-group">
+      <label for="apiKey">API Key:</label>
+      <input type="text" id="apiKey" placeholder="Enter your Bunny.net API key">
+    </div>
+    <button onclick="testApiKey()">Test API Key</button>
+    <div id="apiKeyResult"></div>
+  </div>
+
+  <div class="card">
+    <h2>Libraries Test</h2>
+    <button onclick="testLibraries()">Test Libraries API</button>
+    <div id="librariesResult"></div>
+  </div>
+
+  <div class="card">
+    <h2>Collections Test</h2>
+    <div class="form-group">
+      <label for="libraryId">Library ID:</label>
+      <input type="text" id="libraryId" placeholder="Enter library ID">
+    </div>
+    <button onclick="testCollections()">Test Collections API</button>
+    <div id="collectionsResult"></div>
+  </div>
+
+  <script>
+    async function testApiKey() {
+      const apiKey = document.getElementById('apiKey').value;
+      const resultDiv = document.getElementById('apiKeyResult');
+      
+      try {
+        const response = await fetch('/api/test-api-key', {
+          headers: {
+            'AccessKey': apiKey
+          }
+        });
+        
+        const result = await response.json();
+        resultDiv.innerHTML = `
+          <pre class="${response.ok ? 'success' : 'error'}">${JSON.stringify(result, null, 2)}</pre>
+        `;
+      } catch (error) {
+        resultDiv.innerHTML = `<pre class="error">Error: ${error.message}</pre>`;
+      }
+    }
+
+    async function testLibraries() {
+      const apiKey = document.getElementById('apiKey').value;
+      const resultDiv = document.getElementById('librariesResult');
+      
+      try {
+        const response = await fetch('/api/proxy/base/videolibrary', {
+          headers: {
+            'AccessKey': apiKey
+          }
+        });
+        
+        const result = await response.json();
+        resultDiv.innerHTML = `
+          <pre class="${response.ok ? 'success' : 'error'}">${JSON.stringify(result, null, 2)}</pre>
+        `;
+      } catch (error) {
+        resultDiv.innerHTML = `<pre class="error">Error: ${error.message}</pre>`;
+      }
+    }
+
+    async function testCollections() {
+      const apiKey = document.getElementById('apiKey').value;
+      const libraryId = document.getElementById('libraryId').value;
+      const resultDiv = document.getElementById('collectionsResult');
+      
+      if (!libraryId) {
+        resultDiv.innerHTML = `<pre class="error">Please enter a library ID</pre>`;
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/api/proxy/video/library/${libraryId}/collections`, {
+          headers: {
+            'AccessKey': apiKey
+          }
+        });
+        
+        const result = await response.json();
+        resultDiv.innerHTML = `
+          <pre class="${response.ok ? 'success' : 'error'}">${JSON.stringify(result, null, 2)}</pre>
+        `;
+      } catch (error) {
+        resultDiv.innerHTML = `<pre class="error">Error: ${error.message}</pre>`;
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>اختبار استخراج رابط MP4 - نهج Python</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+            direction: rtl;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+        .video-info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2196f3;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+        .test-section h3 {
+            color: #007bff;
+            margin-top: 0;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .output {
+            background: #000;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 15px;
+            white-space: pre-wrap;
+            direction: ltr;
+        }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .warning { color: #ffc107; }
+        .info { color: #17a2b8; }
+        
+        .url-list {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .url-item {
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            direction: ltr;
+        }
+        .url-success { background: #d4edda; color: #155724; }
+        .url-error { background: #f8d7da; color: #721c24; }
+        .url-testing { background: #fff3cd; color: #856404; }
+        
+        .download-links {
+            margin-top: 20px;
+            padding: 15px;
+            background: #d1ecf1;
+            border-radius: 5px;
+        }
+        
+        .progress {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-bar {
+            height: 100%;
+            background: #007bff;
+            transition: width 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 اختبار استخراج رابط MP4 - نهج Python</h1>
+            <p>اختبار طريقة Python لاستخراج رابط التحميل المباشر من HLS URL</p>
+        </div>
+
+        <div class="video-info">
+            <h3>📹 معلومات الفيديو للاختبار</h3>
+            <p><strong>Library ID:</strong> <code>373439</code></p>
+            <p><strong>Video GUID:</strong> <code>dc3f5a40-83f1-49f8-aac3-95dfc86c0632</code></p>
+            <p><strong>API Key:</strong> <code>7eabe18c-4c2f-4921-b3af4531b8a7-01b1-481b</code></p>
+        </div>
+
+        <div class="test-section">
+            <h3>🔧 اختبارات متدرجة</h3>
+            
+            <button onclick="testStep1()" id="step1-btn">
+                1️⃣ جلب تفاصيل الفيديو
+            </button>
+            
+            <button onclick="testStep2()" id="step2-btn" disabled>
+                2️⃣ استخراج HLS URL
+            </button>
+            
+            <button onclick="testStep3()" id="step3-btn" disabled>
+                3️⃣ إنشاء روابط MP4
+            </button>
+            
+            <button onclick="testStep4()" id="step4-btn" disabled>
+                4️⃣ اختبار إمكانية الوصول
+            </button>
+            
+            <button onclick="testStep5()" id="step5-btn" disabled>
+                5️⃣ إنشاء روابط التحميل
+            </button>
+            
+            <div class="progress">
+                <div class="progress-bar" id="progress-bar" style="width: 0%"></div>
+            </div>
+            
+            <div id="step-output" class="output"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🚀 اختبار كامل</h3>
+            <button onclick="runFullTest()" id="full-test-btn">
+                ▶️ تشغيل الاختبار الكامل
+            </button>
+            <button onclick="clearOutput()">
+                🗑️ مسح النتائج
+            </button>
+            <div id="full-output" class="output"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 نتائج الاختبار</h3>
+            <div id="results-summary"></div>
+            <div id="url-results" class="url-list"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📥 روابط التحميل</h3>
+            <div id="download-links" class="download-links">
+                <p>ستظهر روابط التحميل هنا بعد إكمال الاختبارات</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load the test script -->
+    <script src="test-python-hls-approach.js"></script>
+    
+    <script>
+        let testData = {};
+        let currentStep = 0;
+        const totalSteps = 5;
+
+        function updateProgress(step) {
+            currentStep = step;
+            const percentage = (step / totalSteps) * 100;
+            document.getElementById('progress-bar').style.width = percentage + '%';
+            
+            // Enable next step button
+            if (step < totalSteps) {
+                document.getElementById(`step${step + 1}-btn`).disabled = false;
+            }
+        }
+
+        function logToOutput(message, type = 'info') {
+            const output = document.getElementById('step-output');
+            const timestamp = new Date().toLocaleTimeString('ar-EG');
+            const colorClass = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : 'info';
+            
+            output.innerHTML += `<span class="${colorClass}">[${timestamp}] ${message}</span>\n`;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function logToFullOutput(message, type = 'info') {
+            const output = document.getElementById('full-output');
+            const timestamp = new Date().toLocaleTimeString('ar-EG');
+            const colorClass = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : 'info';
+            
+            output.innerHTML += `<span class="${colorClass}">[${timestamp}] ${message}</span>\n`;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        async function testStep1() {
+            logToOutput('🔄 جاري جلب تفاصيل الفيديو...', 'info');
+            
+            try {
+                const videoData = await getVideoDetails(
+                    REAL_VIDEO_DATA.libraryId,
+                    REAL_VIDEO_DATA.videoGuid,
+                    REAL_VIDEO_DATA.apiKey
+                );
+                
+                testData.videoData = videoData;
+                logToOutput('✅ تم جلب تفاصيل الفيديو بنجاح', 'success');
+                logToOutput(`📄 عنوان الفيديو: ${videoData.title || 'غير محدد'}`, 'info');
+                logToOutput(`📏 طول الفيديو: ${videoData.length || 'غير محدد'} ثانية`, 'info');
+                logToOutput(`🎯 الدقات المتاحة: ${videoData.availableResolutions || 'غير محدد'}`, 'info');
+                
+                if (videoData.hlsUrl) {
+                    logToOutput(`🔗 HLS URL موجود: ${videoData.hlsUrl}`, 'success');
+                } else {
+                    logToOutput('⚠️ لا يوجد HLS URL - سنحتاج لاستخدام روابط بديلة', 'warning');
+                }
+                
+                updateProgress(1);
+                
+            } catch (error) {
+                logToOutput(`❌ فشل في جلب تفاصيل الفيديو: ${error.message}`, 'error');
+            }
+        }
+
+        async function testStep2() {
+            if (!testData.videoData) {
+                logToOutput('❌ يجب تشغيل الخطوة 1 أولاً', 'error');
+                return;
+            }
+            
+            logToOutput('🔍 جاري استخراج HLS URL...', 'info');
+            
+            if (testData.videoData.hlsUrl) {
+                const hlsUrl = testData.videoData.hlsUrl;
+                logToOutput(`✅ تم العثور على HLS URL: ${hlsUrl}`, 'success');
+                
+                // Extract base URL
+                const baseUrl = hlsUrl.split('/').slice(0, -1).join('/');
+                testData.baseUrl = baseUrl;
+                logToOutput(`📁 Base URL: ${baseUrl}`, 'info');
+                
+                updateProgress(2);
+            } else {
+                logToOutput('⚠️ لا يوجد HLS URL - سننتقل لاستخدام الروابط البديلة', 'warning');
+                updateProgress(2);
+            }
+        }
+
+        async function testStep3() {
+            logToOutput('🔗 جاري إنشاء روابط MP4...', 'info');
+            
+            let mp4Urls;
+            if (testData.baseUrl) {
+                // Use HLS-based URL
+                mp4Urls = [`${testData.baseUrl}/play_720p.mp4`];
+                logToOutput(`✅ تم إنشاء رابط MP4 من HLS: ${mp4Urls[0]}`, 'success');
+            } else {
+                // Generate alternative URLs
+                mp4Urls = generateAlternativeMp4Urls(testData.videoData, '720p');
+                logToOutput(`🔄 تم إنشاء ${mp4Urls.length} رابط بديل`, 'info');
+            }
+            
+            testData.mp4Urls = mp4Urls;
+            
+            // Display URLs
+            mp4Urls.forEach((url, index) => {
+                logToOutput(`   ${index + 1}. ${url}`, 'info');
+            });
+            
+            updateProgress(3);
+        }
+
+        async function testStep4() {
+            if (!testData.mp4Urls) {
+                logToOutput('❌ يجب تشغيل الخطوة 3 أولاً', 'error');
+                return;
+            }
+            
+            logToOutput('🧪 جاري اختبار إمكانية الوصول للروابط...', 'info');
+            
+            const testResults = await testMp4UrlsAccessibility(testData.mp4Urls);
+            testData.testResults = testResults;
+            
+            // Display results
+            const urlResultsDiv = document.getElementById('url-results');
+            urlResultsDiv.innerHTML = '<h4>نتائج اختبار الروابط:</h4>';
+            
+            testResults.forEach((result, index) => {
+                const statusClass = result.accessible ? 'url-success' : 'url-error';
+                const statusText = result.accessible ? '✅ يعمل' : '❌ لا يعمل';
+                const statusReason = result.error ? ` (${result.error})` : result.status ? ` (${result.status})` : '';
+                
+                urlResultsDiv.innerHTML += `
+                    <div class="url-item ${statusClass}">
+                        <strong>${index + 1}.</strong> ${result.url}<br>
+                        <small>${statusText}${statusReason}</small>
+                    </div>
+                `;
+                
+                logToOutput(`   ${index + 1}. ${statusText} - ${result.url}`, result.accessible ? 'success' : 'error');
+            });
+            
+            const workingUrls = testResults.filter(r => r.accessible);
+            logToOutput(`📊 النتيجة: ${workingUrls.length} من ${testResults.length} روابط تعمل`, workingUrls.length > 0 ? 'success' : 'error');
+            
+            updateProgress(4);
+        }
+
+        async function testStep5() {
+            if (!testData.testResults) {
+                logToOutput('❌ يجب تشغيل الخطوة 4 أولاً', 'error');
+                return;
+            }
+            
+            const workingUrls = testData.testResults.filter(r => r.accessible);
+            
+            if (workingUrls.length === 0) {
+                logToOutput('❌ لا توجد روابط صالحة للتحميل', 'error');
+                return;
+            }
+            
+            logToOutput('📥 جاري إنشاء روابط التحميل...', 'info');
+            
+            const downloadLinksDiv = document.getElementById('download-links');
+            downloadLinksDiv.innerHTML = '<h4>روابط التحميل المتاحة:</h4>';
+            
+            workingUrls.forEach((result, index) => {
+                const filename = `${testData.videoData.title || 'video'}_720p_${index + 1}.mp4`;
+                
+                const downloadLink = document.createElement('a');
+                downloadLink.href = result.url;
+                downloadLink.download = filename;
+                downloadLink.target = '_blank';
+                downloadLink.style.cssText = `
+                    display: inline-block;
+                    padding: 10px 15px;
+                    margin: 5px;
+                    background: #28a745;
+                    color: white;
+                    text-decoration: none;
+                    border-radius: 5px;
+                    font-weight: bold;
+                `;
+                downloadLink.textContent = `تحميل رابط ${index + 1}`;
+                
+                downloadLinksDiv.appendChild(downloadLink);
+                
+                logToOutput(`✅ تم إنشاء رابط التحميل ${index + 1}: ${filename}`, 'success');
+            });
+            
+            updateProgress(5);
+            logToOutput('🎉 تم إكمال جميع الخطوات بنجاح!', 'success');
+        }
+
+        async function runFullTest() {
+            logToFullOutput('🚀 بدء الاختبار الكامل...', 'info');
+            
+            try {
+                // Override console.log to capture output
+                const originalLog = console.log;
+                console.log = (...args) => {
+                    logToFullOutput(args.join(' '), 'info');
+                    originalLog(...args);
+                };
+                
+                // Run the main test function
+                await runPythonHlsTest();
+                
+                // Restore console.log
+                console.log = originalLog;
+                
+                logToFullOutput('✅ اكتمل الاختبار الكامل', 'success');
+                
+                // Update results summary
+                if (window.testResults) {
+                    const summary = document.getElementById('results-summary');
+                    summary.innerHTML = `
+                        <h4>ملخص النتائج:</h4>
+                        <p><strong>عنوان الفيديو:</strong> ${window.testResults.videoData.title || 'غير محدد'}</p>
+                        <p><strong>HLS URL موجود:</strong> ${window.testResults.videoData.hlsUrl ? 'نعم' : 'لا'}</p>
+                        <p><strong>عدد الروابط المختبرة:</strong> ${window.testResults.testResults.length}</p>
+                        <p><strong>الروابط الصالحة:</strong> ${window.testResults.workingUrls.length}</p>
+                    `;
+                }
+                
+            } catch (error) {
+                logToFullOutput(`❌ فشل الاختبار: ${error.message}`, 'error');
+            }
+        }
+
+        function clearOutput() {
+            document.getElementById('step-output').innerHTML = '';
+            document.getElementById('full-output').innerHTML = '';
+            document.getElementById('results-summary').innerHTML = '';
+            document.getElementById('url-results').innerHTML = '';
+            document.getElementById('download-links').innerHTML = '<p>ستظهر روابط التحميل هنا بعد إكمال الاختبارات</p>';
+            document.getElementById('progress-bar').style.width = '0%';
+            
+            // Reset buttons
+            for (let i = 2; i <= totalSteps; i++) {
+                document.getElementById(`step${i}-btn`).disabled = true;
+            }
+            
+            testData = {};
+            currentStep = 0;
+        }
+
+        // Auto-run message
+        logToOutput('📝 تم تحميل الصفحة. استخدم الأزرار لبدء الاختبارات.', 'info');
+    </script>
+</body>
+</html>

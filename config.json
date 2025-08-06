@@ -1,0 +1,9 @@
+{
+  "features": {
+    "o4-mini": {
+      "enabled": true,
+      "preview": true,
+      "scope": "all-clients"
+    }
+  }
+}

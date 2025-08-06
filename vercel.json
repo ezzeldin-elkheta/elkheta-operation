@@ -1,0 +1,62 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "pages/api/**/*.js",
+      "use": "@vercel/node",
+      "config": {
+        "runtime": "nodejs18.x",
+        "maxDuration": 60,
+        "memory": 1024
+      }
+    },
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/proxy/create-video",
+      "dest": "/pages/api/proxy/create-video.js"
+    },
+    {
+      "src": "/api/proxy/base/([^/]+.*)",
+      "dest": "/pages/api/proxy/base/[...path].js?path=$1"
+    },
+    {
+      "src": "/api/proxy/video/([^/]+.*)",
+      "dest": "/pages/api/proxy/video/[...path].js?path=$1"
+    },
+    {
+      "src": "/api/sheets/update-bunny-embeds",
+      "dest": "/pages/api/sheets/update-bunny-embeds.js"
+    },
+    {
+      "src": "/api/update-sheet",
+      "dest": "/pages/api/update-sheet.js"
+    },
+    {
+      "src": "/api/clear-cache",
+      "dest": "/pages/api/clear-cache.js"
+    },
+    {
+      "src": "/api/sheets/update-final-minutes",
+      "dest": "/pages/api/sheets/update-final-minutes.js"
+    },
+    {
+      "src": "/api/test-all",
+      "dest": "/pages/api/test-all.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/dist/$1"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  }
+}
