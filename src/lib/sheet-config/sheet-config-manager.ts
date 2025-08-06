@@ -58,53 +58,73 @@ function buildPreset(base: Omit<SheetConfig, 'createdAt' | 'updatedAt' | 'id'>):
 class SheetConfigManager {
   private readonly STORAGE_KEY = 'sheet_configurations';
   private configs: SheetConfig[] = [];
+  private initialized = false;
 
   constructor() {
-    this.loadConfigs();
+    try {
+      this.loadConfigs();
+      this.initialized = true;
+    } catch (error) {
+      console.error('[SheetConfigManager] Initialization failed:', error);
+      // Initialize with default configs if loading fails
+      this.configs = PRESET_CONFIGS.map(buildPreset);
+      this.initialized = true;
+    }
   }
 
   private loadConfigs(): void {
     try {
       const stored = localStorage.getItem(this.STORAGE_KEY);
       if (stored) {
-        // Ensure backward-compatibility by mapping old field names to new aliases (and vice-versa)
-        const parsed: SheetConfig[] = JSON.parse(stored);
-        this.configs = parsed.map((cfg) => ({
-          ...cfg,
-          // Inject aliases if missing so the rest of the codebase (which expects videoNameColumn/embedCodeColumn) keeps working
-          videoNameColumn: cfg.videoNameColumn ?? cfg.nameColumn,
-          embedCodeColumn: cfg.embedCodeColumn ?? cfg.embedColumn,
-          // Ensure canonical fields exist too
-          nameColumn: cfg.nameColumn ?? cfg.videoNameColumn,
-          embedColumn: cfg.embedColumn ?? cfg.embedCodeColumn,
-        }));
+        try {
+          // Ensure backward-compatibility by mapping old field names to new aliases (and vice-versa)
+          const parsed: SheetConfig[] = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            this.configs = parsed.map((cfg) => ({
+              ...cfg,
+              // Inject aliases if missing so the rest of the codebase (which expects videoNameColumn/embedCodeColumn) keeps working
+              videoNameColumn: cfg.videoNameColumn ?? cfg.nameColumn,
+              embedCodeColumn: cfg.embedCodeColumn ?? cfg.embedColumn,
+              // Ensure canonical fields exist too
+              nameColumn: cfg.nameColumn ?? cfg.videoNameColumn,
+              embedColumn: cfg.embedColumn ?? cfg.embedCodeColumn,
+            }));
 
-        // 🔄 دمج الإعدادات المسبقة إذا كانت غير موجودة
-        for (const presetBase of PRESET_CONFIGS) {
-          const exists = this.configs.some(c => c.spreadsheetId === presetBase.spreadsheetId);
-          if (!exists) {
-            this.configs.push(buildPreset(presetBase));
+            // 🔄 دمج الإعدادات المسبقة إذا كانت غير موجودة
+            for (const presetBase of PRESET_CONFIGS) {
+              const exists = this.configs.some(c => c.spreadsheetId === presetBase.spreadsheetId);
+              if (!exists) {
+                this.configs.push(buildPreset(presetBase));
+              }
+            }
+
+            // إذا لم يكن هناك أى شيت محدد كافتراضى، اجعل أول واحد isDefault
+            if (!this.configs.some(c => c.isDefault)) {
+              const defaultPreset = this.configs.find(c => c.spreadsheetId === PRESET_CONFIGS.find(p => p.isDefault)?.spreadsheetId) || this.configs[0];
+              if (defaultPreset) defaultPreset.isDefault = true;
+            }
+
+            console.log('[SheetConfigManager] Loaded configs from localStorage:', this.configs.length);
+          } else {
+            throw new Error('Stored configs is not an array');
           }
+        } catch (parseError) {
+          console.error('[SheetConfigManager] Error parsing stored configs:', parseError);
+          // Fall back to preset configs
+          this.configs = PRESET_CONFIGS.map(buildPreset);
+          this.saveConfigs();
         }
-
-        // إذا لم يكن هناك أى شيت محدد كافتراضى، اجعل أول واحد isDefault
-        if (!this.configs.some(c => c.isDefault)) {
-          const defaultPreset = this.configs.find(c => c.spreadsheetId === PRESET_CONFIGS.find(p => p.isDefault)?.spreadsheetId) || this.configs[0];
-          if (defaultPreset) defaultPreset.isDefault = true;
-        }
-
-        console.log('[SheetConfigManager] Loaded configs from localStorage:', this.configs.length);
       } else {
         // لا يوجد مخزن محلى → ابدأ بالإعدادات المسبقة
         this.configs = PRESET_CONFIGS.map(buildPreset);
         // تأكد من حفظها حتى تظهر فى المرات القادمة
         this.saveConfigs();
-        console.log('[SheetConfigManager] Initialised with preset sheet configs');
       }
     } catch (error) {
-      console.error('Failed to load sheet configs:', error);
-      // كخطة طوارئ – ابدأ بالمسبقات على الأقل
+      console.error('[SheetConfigManager] Error loading configs:', error);
+      // Initialize with preset configs as fallback
       this.configs = PRESET_CONFIGS.map(buildPreset);
+      this.saveConfigs();
     }
   }
 
@@ -140,11 +160,17 @@ class SheetConfigManager {
 
   private saveConfigs(): void {
     try {
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.configs));
-      console.log('[SheetConfigManager] Saved configs to localStorage');
+      if (this.initialized) {
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.configs));
+        console.log('[SheetConfigManager] Saved configs to localStorage');
+      }
     } catch (error) {
-      console.error('Failed to save sheet configs:', error);
+      console.error('[SheetConfigManager] Error saving configs:', error);
     }
+  }
+
+  isInitialized(): boolean {
+    return this.initialized;
   }
 
   addConfig(config: Omit<SheetConfig, 'id' | 'createdAt' | 'updatedAt'>): SheetConfig {

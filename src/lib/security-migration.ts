@@ -41,7 +41,7 @@ export class SecurityMigration {
       secureLog('Security migration completed successfully');
     } catch (error) {
       console.error('[SecurityMigration] Migration failed:', error);
-      throw error;
+      // Don't throw the error, just log it to prevent app crashes
     }
   }
 
@@ -53,18 +53,27 @@ export class SecurityMigration {
       // Migrate bunny_library_api_keys
       const oldApiKeys = localStorage.getItem('bunny_library_api_keys');
       if (oldApiKeys) {
-        const keys = JSON.parse(oldApiKeys);
-        Object.entries(keys).forEach(([libraryId, apiKey]) => {
-          SecureApiKeyStorage.store(libraryId, apiKey as string);
-          secureLog('Migrated API key for library', { libraryId });
-        });
-        localStorage.removeItem('bunny_library_api_keys');
-        secureLog('Migrated library API keys');
+        try {
+          const keys = JSON.parse(oldApiKeys);
+          if (keys && typeof keys === 'object') {
+            Object.entries(keys).forEach(([libraryId, apiKey]) => {
+              if (libraryId && apiKey && typeof apiKey === 'string') {
+                SecureApiKeyStorage.store(libraryId, apiKey);
+                secureLog('Migrated API key for library', { libraryId });
+              }
+            });
+            localStorage.removeItem('bunny_library_api_keys');
+            secureLog('Migrated library API keys');
+          }
+        } catch (parseError) {
+          console.error('Error parsing old API keys:', parseError);
+          localStorage.removeItem('bunny_library_api_keys');
+        }
       }
 
       // Migrate bunny_api_key
       const oldMainKey = localStorage.getItem('bunny_api_key');
-      if (oldMainKey) {
+      if (oldMainKey && typeof oldMainKey === 'string') {
         SecureApiKeyStorage.store('default', oldMainKey);
         localStorage.removeItem('bunny_api_key');
         secureLog('Migrated main API key');
@@ -75,7 +84,7 @@ export class SecurityMigration {
       if (oldDefaultKey) {
         try {
           const cache = JSON.parse(oldDefaultKey);
-          if (cache.default_api_key) {
+          if (cache && cache.default_api_key && typeof cache.default_api_key === 'string') {
             SecureApiKeyStorage.store('default', cache.default_api_key);
             secureLog('Migrated default API key from cache');
           }
@@ -95,10 +104,17 @@ export class SecurityMigration {
     try {
       const oldLibraryData = localStorage.getItem('library_data');
       if (oldLibraryData) {
-        const data = JSON.parse(oldLibraryData);
-        SecureDataStorage.set('library_data', data);
-        localStorage.removeItem('library_data');
-        secureLog('Migrated library data', { libraryCount: data.libraries?.length || 0 });
+        try {
+          const data = JSON.parse(oldLibraryData);
+          if (data && typeof data === 'object') {
+            SecureDataStorage.set('library_data', data);
+            localStorage.removeItem('library_data');
+            secureLog('Migrated library data');
+          }
+        } catch (parseError) {
+          console.error('Error parsing old library data:', parseError);
+          localStorage.removeItem('library_data');
+        }
       }
     } catch (error) {
       console.error('[SecurityMigration] Library data migration failed:', error);
@@ -112,18 +128,24 @@ export class SecurityMigration {
     try {
       const oldCache = localStorage.getItem('app_cache');
       if (oldCache) {
-        const cache = JSON.parse(oldCache);
-        Object.entries(cache).forEach(([key, value]) => {
-          // Skip API keys as they're handled separately
-          if (!key.includes('api_key') && !key.includes('api')) {
-            SecureCacheManager.set(key, value);
+        try {
+          const cache = JSON.parse(oldCache);
+          if (cache && typeof cache === 'object') {
+            Object.entries(cache).forEach(([key, value]) => {
+              if (key && value !== undefined) {
+                SecureCacheManager.set(key, value);
+              }
+            });
+            localStorage.removeItem('app_cache');
+            secureLog('Migrated cache data');
           }
-        });
-        localStorage.removeItem('app_cache');
-        secureLog('Migrated cache data');
+        } catch (parseError) {
+          console.error('Error parsing old cache data:', parseError);
+          localStorage.removeItem('app_cache');
+        }
       }
     } catch (error) {
-      console.error('[SecurityMigration] Cache migration failed:', error);
+      console.error('[SecurityMigration] Cache data migration failed:', error);
     }
   }
 
@@ -132,31 +154,52 @@ export class SecurityMigration {
    */
   private static async migrateOtherData(): Promise<void> {
     try {
-      // Migrate sheet configurations
-      const oldSheetConfigs = localStorage.getItem('sheet_configurations');
-      if (oldSheetConfigs) {
-        const configs = JSON.parse(oldSheetConfigs);
-        SecureDataStorage.set('sheet_configurations', configs);
-        localStorage.removeItem('sheet_configurations');
-        secureLog('Migrated sheet configurations');
-      }
-
-      // Migrate upload settings
-      const oldUploadSettings = localStorage.getItem('upload_settings');
-      if (oldUploadSettings) {
-        const settings = JSON.parse(oldUploadSettings);
-        SecureDataStorage.set('upload_settings', settings);
-        localStorage.removeItem('upload_settings');
-        secureLog('Migrated upload settings');
-      }
-
       // Migrate selected library
-      const oldSelectedLibrary = localStorage.getItem('selectedLibrary');
-      if (oldSelectedLibrary) {
-        const library = JSON.parse(oldSelectedLibrary);
-        SecureDataStorage.set('selectedLibrary', library);
-        localStorage.removeItem('selectedLibrary');
-        secureLog('Migrated selected library');
+      const selectedLibrary = localStorage.getItem('selectedLibrary');
+      if (selectedLibrary) {
+        try {
+          const library = JSON.parse(selectedLibrary);
+          if (library && typeof library === 'object') {
+            SecureDataStorage.set('selectedLibrary', library);
+            localStorage.removeItem('selectedLibrary');
+            secureLog('Migrated selected library');
+          }
+        } catch (parseError) {
+          console.error('Error parsing selected library:', parseError);
+          localStorage.removeItem('selectedLibrary');
+        }
+      }
+
+      // Migrate selected collection
+      const selectedCollection = localStorage.getItem('selectedCollection');
+      if (selectedCollection) {
+        try {
+          const collection = JSON.parse(selectedCollection);
+          if (collection && typeof collection === 'object') {
+            SecureDataStorage.set('selectedCollection', collection);
+            localStorage.removeItem('selectedCollection');
+            secureLog('Migrated selected collection');
+          }
+        } catch (parseError) {
+          console.error('Error parsing selected collection:', parseError);
+          localStorage.removeItem('selectedCollection');
+        }
+      }
+
+      // Migrate sheet configurations
+      const sheetConfigs = localStorage.getItem('sheet_configurations');
+      if (sheetConfigs) {
+        try {
+          const configs = JSON.parse(sheetConfigs);
+          if (configs && Array.isArray(configs)) {
+            SecureDataStorage.set('sheet_configurations', configs);
+            localStorage.removeItem('sheet_configurations');
+            secureLog('Migrated sheet configurations');
+          }
+        } catch (parseError) {
+          console.error('Error parsing sheet configurations:', parseError);
+          localStorage.removeItem('sheet_configurations');
+        }
       }
     } catch (error) {
       console.error('[SecurityMigration] Other data migration failed:', error);
@@ -171,22 +214,19 @@ export class SecurityMigration {
       const keysToRemove = [
         'bunny_library_api_keys',
         'bunny_api_key',
-        'library_data',
         'app_cache',
-        'sheet_configurations',
-        'upload_settings',
+        'library_data',
         'selectedLibrary',
-        '_3g4_session_id' // Remove session ID as well
+        'selectedCollection',
+        'sheet_configurations'
       ];
 
       keysToRemove.forEach(key => {
         if (localStorage.getItem(key)) {
           localStorage.removeItem(key);
-          secureLog('Removed old unencrypted data', { key });
+          secureLog(`Cleaned up old data: ${key}`);
         }
       });
-
-      secureLog('Cleanup completed');
     } catch (error) {
       console.error('[SecurityMigration] Cleanup failed:', error);
     }
@@ -210,18 +250,17 @@ export class SecurityMigration {
     const completed = !!localStorage.getItem(this.MIGRATION_FLAG);
     const unencryptedKeys: string[] = [];
     
-    // Check for unencrypted sensitive data
-    const sensitiveKeys = [
+    const keysToCheck = [
       'bunny_library_api_keys',
       'bunny_api_key',
-      'library_data',
       'app_cache',
-      'sheet_configurations',
-      'upload_settings',
-      'selectedLibrary'
+      'library_data',
+      'selectedLibrary',
+      'selectedCollection',
+      'sheet_configurations'
     ];
 
-    sensitiveKeys.forEach(key => {
+    keysToCheck.forEach(key => {
       if (localStorage.getItem(key)) {
         unencryptedKeys.push(key);
       }
@@ -235,7 +274,7 @@ export class SecurityMigration {
   }
 
   /**
-   * Force re-migration (for testing or recovery)
+   * Force remigration (for testing or recovery)
    */
   static async forceRemigration(): Promise<void> {
     localStorage.removeItem(this.MIGRATION_FLAG);
@@ -244,15 +283,19 @@ export class SecurityMigration {
 }
 
 /**
- * Auto-migration on app startup
+ * Initialize security migration
  */
 export function initializeSecurityMigration(): void {
-  if (SecurityMigration.isMigrationNeeded()) {
-    secureLog('Security migration needed, starting...');
-    SecurityMigration.migrateToSecureStorage().catch(error => {
-      console.error('[SecurityMigration] Auto-migration failed:', error);
-    });
-  } else {
-    secureLog('Security migration already completed');
+  try {
+    if (SecurityMigration.isMigrationNeeded()) {
+      secureLog('Security migration needed, starting...');
+      SecurityMigration.migrateToSecureStorage().catch(error => {
+        console.error('Security migration failed:', error);
+      });
+    } else {
+      secureLog('Security migration already completed');
+    }
+  } catch (error) {
+    console.error('Error initializing security migration:', error);
   }
 } 
