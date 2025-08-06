@@ -5,19 +5,19 @@ import { UploadService } from '../bunny/services/upload-service';
 
 // Default settings compatible with UploadSettings
 export const DEFAULT_SETTINGS: UploadSettings = {
-  maxConcurrentUploads: DEFAULT_UPLOAD_CONFIG.maxConcurrent || 3,
+  maxConcurrentUploads: DEFAULT_UPLOAD_CONFIG.maxConcurrent || 1,
   useStreaming: DEFAULT_UPLOAD_CONFIG.useStreaming || true,
-  chunkSize: DEFAULT_UPLOAD_CONFIG.chunkSize || 5 * 1024 * 1024,
+  chunkSize: DEFAULT_UPLOAD_CONFIG.chunkSize || 2 * 1024 * 1024, // 2MB chunks
   timeoutMs: DEFAULT_UPLOAD_CONFIG.timeoutMs || 60000,
-  useTusThresholdMB: DEFAULT_UPLOAD_CONFIG.useTusThresholdMB || 500,
-  retryDelays: DEFAULT_UPLOAD_CONFIG.retryDelays || [0, 3000, 10000, 30000, 60000, 120000, 180000],
-  retryAttempts: DEFAULT_UPLOAD_CONFIG.retryAttempts || 5,
-  enableResumableSessions: DEFAULT_UPLOAD_CONFIG.enableResumableSessions || true,
-  sessionExpiryHours: DEFAULT_UPLOAD_CONFIG.sessionExpiryHours || 48,
-  enableAutoRetry: DEFAULT_UPLOAD_CONFIG.enableAutoRetry || true,
-  enableConnectionCheck: DEFAULT_UPLOAD_CONFIG.enableConnectionCheck || true,
-  maxConcurrent: DEFAULT_UPLOAD_CONFIG.maxConcurrent || 1,
-  useStreamingUpload: DEFAULT_UPLOAD_CONFIG.useStreaming || true,
+  useTusThresholdMB: DEFAULT_UPLOAD_CONFIG.useTusThresholdMB || 2,
+  retryDelays: DEFAULT_UPLOAD_CONFIG.retryDelays || [0, 5000, 10000, 30000],
+  retryAttempts: DEFAULT_UPLOAD_CONFIG.retryAttempts || 3,
+  enableResumableSessions: true,
+  sessionExpiryHours: 24,
+  enableAutoRetry: true,
+  enableConnectionCheck: true,
+  maxConcurrent: 1,
+  useStreamingUpload: true,
   enableProxyFallback: true,
   proxyTimeoutMs: 15000,
   validateConnectionBeforeUpload: true

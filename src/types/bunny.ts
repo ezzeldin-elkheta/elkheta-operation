@@ -43,13 +43,13 @@ export interface VideoUploadConfig {
 export const DEFAULT_UPLOAD_CONFIG: VideoUploadConfig = {
   maxConcurrent: 1,
   retryAttempts: 5,
-  chunkSize: 1024 * 1024 * 4, // تقليل حجم القطعة إلى 4 ميجابايت للتوافق مع الخطة المجانية
+  chunkSize: 1024 * 1024 * 2, // تقليل حجم القطعة إلى 2 ميجابايت
   timeoutMs: 120000,
-  useTusThresholdMB: 4, // تعديل حد TUS ليتناسب مع الخطة المجانية
+  useTusThresholdMB: 2, // تقليل الحد إلى 2 ميجابايت
   useStreaming: true,
-  retryDelays: [0, 5000, 10000, 30000, 60000, 120000],
+  retryDelays: [0, 5000, 10000, 30000, 60000],
   enableResumableSessions: true,
-  sessionExpiryHours: 48,
+  sessionExpiryHours: 24,
   enableAutoRetry: true,
   enableConnectionCheck: true
 };
