@@ -62,16 +62,20 @@ export function loadCache(): void {
     const cachedData = SecureCacheManager.getAll();
     if (cachedData && Object.keys(cachedData).length > 0) {
       secureLog('Cache loaded from secure storage', { keyCount: Object.keys(cachedData).length });
-      cache = new Map(Object.entries(cachedData));
+      // Clear existing cache and load new data
+      cache.clear();
+      Object.entries(cachedData).forEach(([key, value]) => {
+        cache.set(key, value);
+      });
     } else {
       secureLog('No cached data found, starting with empty cache');
-      cache = new Map();
+      cache.clear();
     }
   } catch (error) {
     console.error('[Cache] Failed to load cache:', error);
     // Clear corrupted cache and start fresh
     SecureCacheManager.clear();
-    cache = new Map();
+    cache.clear();
     secureLog('Cache corrupted, cleared and started fresh');
   }
 }
