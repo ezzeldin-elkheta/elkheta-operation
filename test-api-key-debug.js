@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 console.log('Environment variables loaded:');
-console.log('VITE_BUNNY_API_KEY:', process.env.VITE_BUNNY_API_KEY?.substring(0, 8) + '...');
+console.log('VITE_BUNNY_API_KEY:', process.env.VITE_BUNNY_API_KEY ? '********' : 'not set');
 
 async function testApiKey() {
     try {

@@ -4,6 +4,7 @@ import { UploadProgress, UploadSettings } from '../upload/types';
 import { cache } from '../cache';
 import { LibraryService } from './services/library-service';
 import { CollectionService } from './services/collections-service';
+import { encryptApiKey, decryptApiKey } from '../crypto-utils';
 
 export class BunnyService {
   private uploadService: UploadService;
@@ -33,12 +34,17 @@ export class BunnyService {
         const parsed = JSON.parse(appCache);
         Object.entries(parsed).forEach(([key, value]) => {
           if (key.startsWith('library_') && key.endsWith('_api')) {
-            const libraryId = key.replace('library_', '').replace('_api', '');
-            this.httpClient.setLibraryApiKey(libraryId, value as string);
+            try {
+              const libraryId = key.replace('library_', '').replace('_api', '');
+              const decryptedKey = decryptApiKey(value as string);
+              this.httpClient.setLibraryApiKey(libraryId, decryptedKey);
+            } catch (error) {
+              console.warn(`Failed to decrypt API key for library, skipping...`);
+            }
           }
         });
       } catch (error) {
-        console.error('Error loading library API keys from cache:', error);
+        console.warn('Error loading library API keys from cache');
       }
     }
   }
