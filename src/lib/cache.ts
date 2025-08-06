@@ -1,4 +1,4 @@
-import { SecureCacheManager, secureLog } from './crypto-utils';
+import { SecureCacheManager, secureLog } from './crypto-utils.ts';
 
 class CacheManager {
   private cache = new Map<string, any>();

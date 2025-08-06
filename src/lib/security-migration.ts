@@ -2,7 +2,7 @@
  * Security migration system to encrypt existing unencrypted data
  */
 
-import { SecureApiKeyStorage, SecureDataStorage, SecureCacheManager, secureLog } from './crypto-utils';
+import { SecureApiKeyStorage, SecureDataStorage, SecureCacheManager, secureLog } from './crypto-utils.ts';
 
 export class SecurityMigration {
   private static readonly MIGRATION_FLAG = 'security_migration_completed';

@@ -1,5 +1,5 @@
 import { LibraryData } from './types';
-import { SecureDataStorage, secureLog } from './crypto-utils';
+import { SecureDataStorage, secureLog } from './crypto-utils.ts';
 
 class DataStorage {
   private libraryData: LibraryData | null = null;
