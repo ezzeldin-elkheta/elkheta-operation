@@ -55,3 +55,23 @@ class CacheManager {
 }
 
 export const cache = new CacheManager();
+
+// Load cache from localStorage
+export function loadCache(): void {
+  try {
+    const cachedData = SecureCacheManager.getAll();
+    if (cachedData && Object.keys(cachedData).length > 0) {
+      secureLog('Cache loaded from secure storage', { keyCount: Object.keys(cachedData).length });
+      cache = new Map(Object.entries(cachedData));
+    } else {
+      secureLog('No cached data found, starting with empty cache');
+      cache = new Map();
+    }
+  } catch (error) {
+    console.error('[Cache] Failed to load cache:', error);
+    // Clear corrupted cache and start fresh
+    SecureCacheManager.clear();
+    cache = new Map();
+    secureLog('Cache corrupted, cleared and started fresh');
+  }
+}

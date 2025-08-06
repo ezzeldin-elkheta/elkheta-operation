@@ -12,7 +12,29 @@ export function SecurityManager() {
   const [migrationStatus, setMigrationStatus] = useState(() => SecurityMigration.getMigrationStatus());
   const [isLoading, setIsLoading] = useState(false);
   const [showSensitiveData, setShowSensitiveData] = useState(false);
+  const [dataStats, setDataStats] = useState({
+    apiKeysCount: 0,
+    hasLibraryData: false,
+    cacheItemsCount: 0
+  });
   const { toast } = useToast();
+
+  // Update data statistics
+  useEffect(() => {
+    try {
+      const apiKeys = Object.keys(SecureApiKeyStorage.getAll());
+      const libraryData = SecureDataStorage.get('library_data');
+      const cacheData = Object.keys(SecureCacheManager.getAll());
+      
+      setDataStats({
+        apiKeysCount: apiKeys.length,
+        hasLibraryData: !!libraryData,
+        cacheItemsCount: cacheData.length
+      });
+    } catch (error) {
+      console.error('[SecurityManager] Failed to get data stats:', error);
+    }
+  }, [migrationStatus.completed]);
 
   const handleMigration = async () => {
     setIsLoading(true);
@@ -184,19 +206,19 @@ export function SecurityManager() {
                 <div className="flex justify-between">
                   <span>API Keys:</span>
                   <Badge variant="outline">
-                    {Object.keys(SecureApiKeyStorage.getAll()).length} encrypted
+                    {dataStats.apiKeysCount} encrypted
                   </Badge>
                 </div>
                 <div className="flex justify-between">
                   <span>Library Data:</span>
                   <Badge variant="outline">
-                    {SecureDataStorage.get('library_data') ? 'Encrypted' : 'None'}
+                    {dataStats.hasLibraryData ? 'Encrypted' : 'None'}
                   </Badge>
                 </div>
                 <div className="flex justify-between">
                   <span>Cache Data:</span>
                   <Badge variant="outline">
-                    {Object.keys(SecureCacheManager.getAll()).length} items
+                    {dataStats.cacheItemsCount} items
                   </Badge>
                 </div>
                 <div className="flex justify-between">

@@ -271,15 +271,21 @@ export class SecureCacheManager {
     }
   }
   
-  private static getAll(): Record<string, any> {
+  // Get all cached data
+  static getAll(): Record<string, any> {
     try {
-      const encrypted = localStorage.getItem(this.CACHE_KEY);
-      if (!encrypted) return {};
+      const encryptedData = localStorage.getItem('secure_cache');
+      if (!encryptedData) return {};
       
-      const decrypted = decryptData(encrypted);
-      return JSON.parse(decrypted);
+      const decryptedData = decryptData(encryptedData);
+      if (!decryptedData) return {};
+      
+      const parsed = JSON.parse(decryptedData);
+      return typeof parsed === 'object' ? parsed : {};
     } catch (error) {
       console.error('[SecureCache] Failed to parse cache:', error);
+      // Clear corrupted cache
+      localStorage.removeItem('secure_cache');
       return {};
     }
   }
