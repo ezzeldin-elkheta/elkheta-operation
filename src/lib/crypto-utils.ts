@@ -278,10 +278,20 @@ export class SecureCacheManager {
       if (!encryptedData) return {};
       
       const decryptedData = decryptData(encryptedData);
-      if (!decryptedData) return {};
+      if (!decryptedData) {
+        console.warn('[SecureCache] Failed to decrypt cache data, clearing corrupted cache');
+        localStorage.removeItem('secure_cache');
+        return {};
+      }
       
       const parsed = JSON.parse(decryptedData);
-      return typeof parsed === 'object' ? parsed : {};
+      if (typeof parsed !== 'object' || parsed === null) {
+        console.warn('[SecureCache] Invalid cache data format, clearing corrupted cache');
+        localStorage.removeItem('secure_cache');
+        return {};
+      }
+      
+      return parsed;
     } catch (error) {
       console.error('[SecureCache] Failed to parse cache:', error);
       // Clear corrupted cache
