@@ -4,8 +4,8 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Alert, AlertDescription } from './ui/alert';
 import { Shield, Lock, Unlock, Eye, EyeOff, Trash2, RefreshCw } from 'lucide-react';
-import { SecurityMigration, secureLog } from '../lib/security-migration';
-import { SecureApiKeyStorage, SecureDataStorage, SecureCacheManager } from '../lib/crypto-utils';
+import { SecurityMigration, secureLog } from '../lib/security-migration.ts';
+import { SecureApiKeyStorage, SecureDataStorage, SecureCacheManager } from '../lib/crypto-utils.ts';
 import { useToast } from '../hooks/use-toast';
 
 export function SecurityManager() {

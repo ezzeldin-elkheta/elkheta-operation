@@ -4,7 +4,7 @@ import { dataStorage } from '../lib/data-storage';
 import { Library, Collection } from '../lib/bunny/types';
 import { useToast } from './use-toast';
 import { cache } from '../lib/cache';
-import { secureLog } from '../lib/crypto-utils';
+import { secureLog } from '../lib/crypto-utils.ts';
 
 export function useLibraries(initialLibraries: Library[] = [], initialCollections: Collection[] = []) {
   const [libraries, setLibraries] = useState<Library[]>(initialLibraries);
