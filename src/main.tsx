@@ -6,6 +6,10 @@ import { BrowserRouter } from "react-router-dom";
 
 import { TempoDevtools } from "tempo-devtools";
 import "./lib/startup-check"; // Run environment checks on startup
+import { initializeSecurityMigration } from './lib/security-migration'
+
+// Initialize security migration before app starts
+initializeSecurityMigration();
 
 TempoDevtools.init();
 
