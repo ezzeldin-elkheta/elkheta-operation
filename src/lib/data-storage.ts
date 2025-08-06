@@ -3,6 +3,7 @@ import { LibraryData, LibraryInfo, CollectionInfo } from '../types/library-data'
 import { CollectionsResponse } from './types';
 import { cache } from './cache';
 import { bunnyService } from './bunny-service';
+import { encryptApiKey, decryptApiKey } from './crypto-utils';
 
 interface CollectionData {
   videoLibraryId: number;
@@ -86,10 +87,23 @@ class DataStorage {
 
   async saveLibraryData(data: LibraryData): Promise<void> {
     try {
-      // Process each library to fetch and add collections
+      // Create a copy to avoid modifying the original data
+      const encryptedData = { ...data };
+      
+      // Encrypt main API key if present
+      if (encryptedData.mainApiKey) {
+        encryptedData.mainApiKey = encryptApiKey(encryptedData.mainApiKey);
+      }
+      
+      // Encrypt API keys before storage
       const processedLibraries = await Promise.all(
-        data.libraries.map(async (library: Library) => {
+        encryptedData.libraries.map(async (library: Library) => {
           try {
+            // Encrypt library API key if present
+            if (library.apiKey) {
+              library.apiKey = encryptApiKey(library.apiKey);
+            }
+            
             // Construct API endpoint if not available
             const apiEndpoint = library.apiEndpoint || `https://video.bunnycdn.com/library/${library.id}`;
 
@@ -150,14 +164,34 @@ class DataStorage {
 
   async getLibraryData(): Promise<LibraryData | null> {
     if (this.libraryData) {
-      return this.libraryData;
+      // Return a decrypted copy
+      const decryptedData = { ...this.libraryData };
+      if (decryptedData.mainApiKey) {
+        decryptedData.mainApiKey = decryptApiKey(decryptedData.mainApiKey);
+      }
+      decryptedData.libraries = decryptedData.libraries.map(lib => ({
+        ...lib,
+        apiKey: lib.apiKey ? decryptApiKey(lib.apiKey) : '' // Use empty string instead of undefined
+      }));
+      return decryptedData;
     }
 
     try {
       const storedData = localStorage.getItem(this.STORAGE_KEY);
       if (storedData) {
-        this.libraryData = JSON.parse(storedData) as LibraryData;
-        return this.libraryData;
+        const parsedData = JSON.parse(storedData) as LibraryData;
+        
+        // Decrypt API keys before storing in memory or returning
+        if (parsedData.mainApiKey) {
+          parsedData.mainApiKey = decryptApiKey(parsedData.mainApiKey);
+        }
+        parsedData.libraries = parsedData.libraries.map(lib => ({
+          ...lib,
+          apiKey: lib.apiKey ? decryptApiKey(lib.apiKey) : '' // Use empty string instead of undefined
+        }));
+        
+        this.libraryData = parsedData;
+        return parsedData;
       }
     } catch (error) {
       console.error('Failed to retrieve library data:', error);

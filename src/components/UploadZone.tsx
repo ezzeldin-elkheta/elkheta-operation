@@ -201,6 +201,8 @@ const UploadZone: React.FC<UploadZoneProps> = ({
           accept="video/*,audio/*,.mp4,.avi,.mov,.wmv,.flv,.webm,.mkv,.m4v,.3gp,.ogv"
           className="hidden"
           ref={inputRef}
+          aria-label="Choose video files to upload"
+          title="Choose video files to upload"
           onChange={(e) => {
             if (e.target.files) {
               checkForVideoFiles(e.target.files);

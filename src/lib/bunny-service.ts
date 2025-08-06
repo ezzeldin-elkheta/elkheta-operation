@@ -139,7 +139,7 @@ export class BunnyService {
       // Get collections for each library
       const libraryInfos = await Promise.all(
         libraries.map(async (lib) => {
-          let collections = [];
+          let collections: Collection[] = [];
           try {
             collections = await this.getCollections(lib.id);
           } catch (error) {

@@ -376,6 +376,7 @@ export function useSheetUpdater(getCurrentSheetConfig?: () => SheetConfig | null
         let message = `تم اكتمال تحديث الدقائق النهائية: `;
         const parts = [];
         if (stats.updated > 0) parts.push(`${stats.updated} تم تحديثه`);
+        if (stats.skipped > 0) parts.push(`${stats.skipped} تم تخطيه (فيديوهات أسئلة)`);
         if (stats.notFound > 0) parts.push(`${stats.notFound} غير موجود`);
         if (stats.error > 0) parts.push(`${stats.error} أخطاء`);
         message += parts.join(', ');
@@ -394,6 +395,15 @@ export function useSheetUpdater(getCurrentSheetConfig?: () => SheetConfig | null
             title: "✅ Final Minutes Update Success",
             description: `${stats.updated} videos updated successfully with final minutes`,
             variant: "success"
+          });
+        }
+        
+        // Show summary for skipped question videos
+        if (stats.skipped > 0) {
+          toast({
+            title: "ℹ️ Question Videos Skipped",
+            description: `${stats.skipped} question videos skipped (final minutes not updated for QV videos)`,
+            variant: "default"
           });
         }
         

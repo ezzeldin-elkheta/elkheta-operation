@@ -1047,7 +1047,7 @@ app.post('/api/sheets/update-bunny-embeds', async (req, res) => {
         console.log(`[Sheet Update] ⏱️ Search time: ${videoProcessTime}ms`);
         console.log(`[Sheet Update] 🎯 Sheet info: "${sheetName}" (${spreadsheetId})`);
         console.log(`[Sheet Update] 📍 Range searched: ${rangeToRead}`);
-        console.log(`[Sheet Update] �️ Names in lookup: ${nameToRowIndex.size}`);
+        console.log(`[Sheet Update] 📍 Names in lookup: ${nameToRowIndex.size}`);
         
         // Show some names from the sheet for comparison
         const allNames = Array.from(nameToRowIndex.keys());
@@ -1110,12 +1110,20 @@ app.post('/api/sheets/update-bunny-embeds', async (req, res) => {
         values: [[video.embed_code]]
       });
 
-      // Also update final minutes if provided
+      // Also update final minutes if provided and NOT a question video
       if (video.final_minutes !== undefined) {
-        updates.push({
-          range: `${sheetName}!${finalMinutesColumn}${rowIndex}`,
-          values: [[Math.round(video.final_minutes)]]
-        });
+        // Check if this is a question video using the enhanced function
+        const isQuestion = isQuestionVideo(video.name);
+        
+        if (!isQuestion) {
+          updates.push({
+            range: `${sheetName}!${finalMinutesColumn}${rowIndex}`,
+            values: [[Math.round(video.final_minutes)]]
+          });
+          console.log(`[Sheet Update] ✅ Added final minutes update for "${video.name}": ${Math.round(video.final_minutes)} minutes (non-question video)`);
+        } else {
+          console.log(`[Sheet Update] ⚠️ SKIPPING final minutes update for question video: "${video.name}"`);
+        }
       }
 
       results.push({ 
@@ -1200,6 +1208,63 @@ app.post('/api/sheets/update-final-minutes', async (req, res) => {
     } = req.body;
     
     console.log(`[Final Minutes Update] Received request with ${videos ? videos.length : 0} videos`);
+    
+    // Enhanced function to detect if video is a question/quiz (QV) video
+    const isQuestionVideo = (videoName) => {
+      if (!videoName) return false;
+      
+      // Check for Q+number pattern anywhere in filename (most reliable indicator)
+      if (/[Qq]\d+/.test(videoName)) {
+        console.log(`[isQuestionVideo] Video "${videoName}" has Q-number pattern - treating as question video`);
+        return true;
+      }
+      
+      // Check for Arabic question indicators with numbers
+      if (/سؤال\s*\d+|أسئلة\s*\d+/.test(videoName)) {
+        console.log(`[isQuestionVideo] Video "${videoName}" has Arabic question pattern - treating as question video`);
+        return true;
+      }
+      
+      // Check for exam/test indicators with numbers
+      if (/اختبار\s*\d+|امتحان\s*\d+/.test(videoName)) {
+        console.log(`[isQuestionVideo] Video "${videoName}" has exam/test pattern - treating as question video`);
+        return true;
+      }
+      
+      // Check for quiz or test keywords (but only if they appear to be main components)
+      if (/\bquiz\b|\btest\b|\bexam\b/i.test(videoName) && 
+          (!/\b[a-z]+\s+quiz\b/i.test(videoName))) {
+        console.log(`[isQuestionVideo] Video "${videoName}" has quiz/test keyword - treating as question video`);
+        return true;
+      }
+      
+      // Check for homework indicators with question numbers
+      if (/\bhw\s*\d+\b|\bhomework\s*\d+\b/i.test(videoName)) {
+        console.log(`[isQuestionVideo] Video "${videoName}" has homework with numbers - treating as question video`);
+        return true;
+      }
+      
+      // Additional check for Arabic question words without numbers (but with context)
+      if (/سؤال|أسئلة/.test(videoName) && /\d+/.test(videoName)) {
+        console.log(`[isQuestionVideo] Video "${videoName}" has Arabic question word with number - treating as question video`);
+        return true;
+      }
+      
+      // Additional check for Arabic exam/test words without numbers (but with context)
+      if (/اختبار|امتحان/.test(videoName) && /\d+/.test(videoName)) {
+        console.log(`[isQuestionVideo] Video "${videoName}" has Arabic exam/test word with number - treating as question video`);
+        return true;
+      }
+      
+      // Additional check for homework words with numbers
+      if (/\bhw\b|\bhomework\b/i.test(videoName) && /\d+/.test(videoName)) {
+        console.log(`[isQuestionVideo] Video "${videoName}" has homework word with number - treating as question video`);
+        return true;
+      }
+      
+      console.log(`[isQuestionVideo] Video "${videoName}" is NOT a question video - will update final minutes`);
+      return false;
+    };
     
     // Use custom sheet config if provided, otherwise use environment defaults
     const spreadsheetId = customSpreadsheetId || process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
@@ -1298,104 +1363,127 @@ app.post('/api/sheets/update-final-minutes', async (req, res) => {
     });
 
     const rows = sheetResponse.data.values || [];
-    const nameToRowIndex = new Map();
+    console.log(`[Final Minutes Update] Read ${rows.length} rows from sheet`);
 
-    // Enhanced function to normalize text for better matching
+    // Create a map of normalized names to row indices for efficient lookup
+    const nameToRowIndex = new Map();
+    const originalNames = [];
+
+    // Helper function to normalize text for comparison
     function normalizeText(text) {
-      return text
-        .replace(/\.mp4$/i, '') // Remove .mp4 extension
-        .replace(/[{}[\]()]/g, '') // Remove brackets and parentheses
-        .replace(/--/g, '-') // Replace double dashes with single dash
-        .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+      if (!text) return '';
+      return text.toString()
         .trim()
-        .toLowerCase();
+        .replace(/\.[^/.]+$/, '') // remove extension
+        .replace(/\s+/g, ' ') // collapse spaces
+        .replace(/[\[\](){}]/g, ' ') // remove brackets
+        .replace(/[-_]+/g, '-') // normalize dashes/underscores
+        .replace(/\s+/g, ' ') // collapse again
+        .trim();
     }
 
-    // Enhanced function to find fuzzy matches
+    // Helper function to find best fuzzy match
     function findBestMatch(searchName, availableNames) {
       const normalizedSearch = normalizeText(searchName);
-      
-      // First try exact match
-      const exactMatch = availableNames.find(name => normalizeText(name) === normalizedSearch);
-      if (exactMatch) {
-        return { match: exactMatch, confidence: 1.0, type: 'exact' };
-      }
-      
-      // Try contains match (both directions)
-      const containsMatch = availableNames.find(name => {
-        const normalizedName = normalizeText(name);
-        return normalizedName.includes(normalizedSearch) || normalizedSearch.includes(normalizedName);
-      });
-      if (containsMatch) {
-        return { match: containsMatch, confidence: 0.8, type: 'contains' };
-      }
-      
-      // Try partial word matching
-      const searchWords = normalizedSearch.split(/[\s-]+/).filter(word => word.length > 2);
       let bestMatch = null;
       let bestScore = 0;
-      
-      for (const name of availableNames) {
-        const normalizedName = normalizeText(name);
-        const nameWords = normalizedName.split(/[\s-]+/).filter(word => word.length > 2);
+
+      for (const availableName of availableNames) {
+        const normalizedAvailable = normalizeText(availableName);
         
-        let matchingWords = 0;
-        for (const searchWord of searchWords) {
-          if (nameWords.some(nameWord => nameWord.includes(searchWord) || searchWord.includes(nameWord))) {
-            matchingWords++;
-          }
-        }
+        // Calculate similarity score (simple implementation)
+        const longer = normalizedSearch.length > normalizedAvailable.length ? normalizedSearch : normalizedAvailable;
+        const shorter = normalizedSearch.length > normalizedAvailable.length ? normalizedAvailable : normalizedSearch;
         
-        const score = matchingWords / Math.max(searchWords.length, nameWords.length);
-        if (score > bestScore && score > 0.5) { // At least 50% word match
+        if (longer.length === 0) return { match: availableName, confidence: 1.0 };
+        
+        const distance = levenshteinDistance(longer, shorter);
+        const score = (longer.length - distance) / longer.length;
+        
+        if (score > bestScore) {
           bestScore = score;
-          bestMatch = name;
+          bestMatch = { match: availableName, confidence: score };
         }
       }
-      
-      if (bestMatch) {
-        return { match: bestMatch, confidence: bestScore, type: 'partial' };
-      }
-      
-      return null;
+
+      return bestMatch;
     }
 
-    // Create lookup maps with better normalization
-    const originalNames = []; // Store original names for fuzzy matching
-    rows.forEach((row, index) => {
-      if (row.length > nameColumnIndex && row[nameColumnIndex]) { // Use proper name column index
-        const originalName = row[nameColumnIndex].toString();
-        originalNames.push(originalName);
-        
-        // Normalize the name: remove extension, trim, and convert to lowercase
-        const normalizedName = normalizeText(originalName);
-        nameToRowIndex.set(normalizedName, index + 1);
-        
-        // Debug logging for the first 5 rows
-        if (index < 5) {
-          console.log(`[Final Minutes Debug] Row ${index + 1}: "${originalName}" -> "${normalizedName}"`);
+    // Simple Levenshtein distance implementation
+    function levenshteinDistance(str1, str2) {
+      const matrix = [];
+      for (let i = 0; i <= str2.length; i++) {
+        matrix[i] = [i];
+      }
+      for (let j = 0; j <= str1.length; j++) {
+        matrix[0][j] = j;
+      }
+      for (let i = 1; i <= str2.length; i++) {
+        for (let j = 1; j <= str1.length; j++) {
+          if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+            matrix[i][j] = matrix[i - 1][j - 1];
+          } else {
+            matrix[i][j] = Math.min(
+              matrix[i - 1][j - 1] + 1,
+              matrix[i][j - 1] + 1,
+              matrix[i - 1][j] + 1
+            );
+          }
         }
+      }
+      return matrix[str2.length][str1.length];
+    }
+
+    // Populate the name-to-row mapping
+    rows.forEach((row, index) => {
+      if (row && row.length > nameColumnIndex && row[nameColumnIndex]) {
+        const originalName = row[nameColumnIndex].toString();
+        const normalizedName = normalizeText(originalName);
+        
+        nameToRowIndex.set(normalizedName, index + 1); // 1-based row index
+        originalNames.push(originalName);
       }
     });
 
-    console.log(`[Final Minutes Debug] Total rows with names: ${nameToRowIndex.size}`);
+    console.log(`[Final Minutes Update] Built name mapping with ${nameToRowIndex.size} entries`);
 
-    // Process updates
     const updates = [];
     const results = [];
-    const stats = { updated: 0, notFound: 0, skipped: 0, error: 0 };
+    const stats = {
+      updated: 0,
+      notFound: 0,
+      skipped: 0,
+      error: 0
+    };
 
+    // Process each video
     for (const video of videos) {
+      console.log(`[Final Minutes Update] Processing video: "${video.name}"`);
+      
+      // Check if this is a question video - SKIP final minutes update for QV videos
+      const isQuestion = isQuestionVideo(video.name);
+      
+      if (isQuestion) {
+        console.log(`[Final Minutes Update] ⚠️ SKIPPING final minutes update for question video: "${video.name}"`);
+        results.push({
+          videoName: video.name,
+          status: 'skipped',
+          details: 'Question video detected - final minutes not updated for QV videos',
+          isQuestion: true
+        });
+        stats.skipped++;
+        continue; // Skip to next video
+      }
+      
       const originalVideoName = video.name;
       const normalizedVideoName = normalizeText(originalVideoName);
       
-      console.log(`[Final Minutes Update] Looking for: "${originalVideoName}" -> normalized: "${normalizedVideoName}"`);
+      console.log(`[Final Minutes Debug] Looking for: "${originalVideoName}" (normalized: "${normalizedVideoName}")`);
       
       let rowIndex = nameToRowIndex.get(normalizedVideoName);
       
-      // If exact match not found, try fuzzy matching
       if (!rowIndex) {
-        console.log(`[Final Minutes Debug] No exact match found, trying fuzzy matching...`);
+        // Try fuzzy matching for better results
         const fuzzyMatch = findBestMatch(originalVideoName, originalNames);
         
         if (fuzzyMatch && fuzzyMatch.confidence >= 0.6) { // Accept matches with 60%+ confidence
@@ -1427,7 +1515,8 @@ app.post('/api/sheets/update-final-minutes', async (req, res) => {
         results.push({ 
           videoName: video.name, 
           status: 'notFound',
-          details: 'Video name not found in sheet'
+          details: 'Video name not found in sheet',
+          isQuestion: false
         });
         stats.notFound++;
         continue;
@@ -1446,7 +1535,8 @@ app.post('/api/sheets/update-final-minutes', async (req, res) => {
       results.push({ 
         videoName: video.name, 
         status: 'updated',
-        details: `Successfully updated final minutes: ${finalMinutes} minutes`
+        details: `Successfully updated final minutes: ${finalMinutes} minutes`,
+        isQuestion: false
       });
       stats.updated++;
       console.log(`[Final Minutes Update] Will update row ${rowIndex} for "${originalVideoName}" with ${finalMinutes} minutes`);

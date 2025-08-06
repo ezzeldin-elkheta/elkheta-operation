@@ -115,6 +115,63 @@ const namesMatch = (nameA, nameB) => {
   return false;
 };
 
+// Enhanced function to detect if video is a question/quiz (QV) video
+const isQuestionVideo = (videoName) => {
+  if (!videoName) return false;
+  
+  // Check for Q+number pattern anywhere in filename (most reliable indicator)
+  if (/[Qq]\d+/.test(videoName)) {
+    console.log(`[isQuestionVideo] Video "${videoName}" has Q-number pattern - treating as question video`);
+    return true;
+  }
+  
+  // Check for Arabic question indicators with numbers
+  if (/سؤال\s*\d+|أسئلة\s*\d+/.test(videoName)) {
+    console.log(`[isQuestionVideo] Video "${videoName}" has Arabic question pattern - treating as question video`);
+    return true;
+  }
+  
+  // Check for exam/test indicators with numbers
+  if (/اختبار\s*\d+|امتحان\s*\d+/.test(videoName)) {
+    console.log(`[isQuestionVideo] Video "${videoName}" has exam/test pattern - treating as question video`);
+    return true;
+  }
+  
+  // Check for quiz or test keywords (but only if they appear to be main components)
+  if (/\bquiz\b|\btest\b|\bexam\b/i.test(videoName) && 
+      (!/\b[a-z]+\s+quiz\b/i.test(videoName))) {
+    console.log(`[isQuestionVideo] Video "${videoName}" has quiz/test keyword - treating as question video`);
+    return true;
+  }
+  
+  // Check for homework indicators with question numbers
+  if (/\bhw\s*\d+\b|\bhomework\s*\d+\b/i.test(videoName)) {
+    console.log(`[isQuestionVideo] Video "${videoName}" has homework with numbers - treating as question video`);
+    return true;
+  }
+  
+  // Additional check for Arabic question words without numbers (but with context)
+  if (/سؤال|أسئلة/.test(videoName) && /\d+/.test(videoName)) {
+    console.log(`[isQuestionVideo] Video "${videoName}" has Arabic question word with number - treating as question video`);
+    return true;
+  }
+  
+  // Additional check for Arabic exam/test words without numbers (but with context)
+  if (/اختبار|امتحان/.test(videoName) && /\d+/.test(videoName)) {
+    console.log(`[isQuestionVideo] Video "${videoName}" has Arabic exam/test word with number - treating as question video`);
+    return true;
+  }
+  
+  // Additional check for homework words with numbers
+  if (/\bhw\b|\bhomework\b/i.test(videoName) && /\d+/.test(videoName)) {
+    console.log(`[isQuestionVideo] Video "${videoName}" has homework word with number - treating as question video`);
+    return true;
+  }
+  
+  console.log(`[isQuestionVideo] Video "${videoName}" is NOT a question video - will update final minutes`);
+  return false;
+};
+
 // Find matching row in sheet with improved logic
 const findMatchingRow = (videoName, rows, nameColumnIndex = 0) => {
   console.log(`[FindRow] Looking for: "${videoName}"`);
@@ -278,6 +335,9 @@ export default async function handler(req, res) {
     for (const video of videos) {
       console.log(`[API] Processing video: ${video.name}`);
       
+      // Check if this is a question video for final minutes update
+      const isQuestion = isQuestionVideo(video.name);
+      
       const matchingRow = findMatchingRow(video.name, rows, nameColumnIndex);
       
       if (matchingRow) {
@@ -308,28 +368,32 @@ export default async function handler(req, res) {
           console.log(`[API] Added embed update for row ${matchingRow}`);
         }
 
-        // Prepare final minutes update (if available)
-        if (video.finalMinutes !== undefined && video.finalMinutes !== null) {
+        // Prepare final minutes update (if available and NOT a question video)
+        if (video.finalMinutes !== undefined && video.finalMinutes !== null && !isQuestion) {
           updates.push({
             range: `${targetSheetName}!${finalMinutesColumn}${matchingRow}`,
             values: [[video.finalMinutes]]
           });
-          console.log(`[API] Added final minutes update for row ${matchingRow}: ${video.finalMinutes}`);
+          console.log(`[API] ✅ Added final minutes update for row ${matchingRow}: ${video.finalMinutes} (non-question video)`);
+        } else if (video.finalMinutes !== undefined && video.finalMinutes !== null && isQuestion) {
+          console.log(`[API] ⚠️ SKIPPING final minutes update for question video: "${video.name}"`);
         }
 
         results.push({
           videoName: video.name,
           status: 'updated',
           row: matchingRow,
-          embedUpdated: !!video.embedCode,
-          finalMinutesUpdated: video.finalMinutes !== undefined && video.finalMinutes !== null
+          embedUpdated: !!(video.embedCode || video.embed_code),
+          finalMinutesUpdated: video.finalMinutes !== undefined && video.finalMinutes !== null && !isQuestion,
+          isQuestion: isQuestion
         });
       } else {
         console.log(`[API] No matching row found for: ${video.name}`);
         results.push({
           videoName: video.name,
           status: 'not_found',
-          row: null
+          row: null,
+          isQuestion: isQuestion
         });
       }
     }

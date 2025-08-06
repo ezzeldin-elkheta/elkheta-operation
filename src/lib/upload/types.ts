@@ -101,6 +101,9 @@ export interface UploadProgress {
   total: number;
   percentage: number;
   bytesPerSecond: number;
+  total: number;
+  percentage: number;
+  bytesPerSecond: number;
   timeRemaining: number;
 }
 

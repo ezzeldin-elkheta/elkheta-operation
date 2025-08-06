@@ -18,6 +18,7 @@ export interface LibraryData {
   lastUpdated?: string;
   date?: Date;
   libraries: Library[];
+  mainApiKey?: string; // Add mainApiKey as optional to maintain backward compatibility
 }
 
 export interface CollectionInterface extends CollectionInfo {}

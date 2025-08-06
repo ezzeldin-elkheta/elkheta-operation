@@ -236,6 +236,8 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
                       className="w-full p-2 border rounded"
                       value={localSettings.uploadMethod || 'auto'}
                       onChange={(e) => handleUploadMethodChange(e.target.value)}
+                      aria-label="Select preferred upload method for large files"
+                      title="Select preferred upload method for large files"
                     >
                       <option value="auto">تلقائي (الموصى به)</option>
                       <option value="tus">TUS Protocol (للملفات الكبيرة جداً)</option>
