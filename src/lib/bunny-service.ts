@@ -1,13 +1,11 @@
-import { UploadService } from './bunny/services/upload-service';
 import { HttpClient } from './bunny/http-client';
-import { UploadProgress, UploadSettings } from './upload/types';
-import { cache } from './cache';
 import { LibraryService } from './bunny/services/library-service';
 import { CollectionService } from './bunny/services/collections-service';
-import { SecureApiKeyStorage, secureLog } from './crypto-utils.ts';
 import { VideoService } from './bunny/services/video-service';
 import { BandwidthService } from './bunny/services/bandwidth-service';
+import { UploadService } from './bunny/services/upload-service';
 import { dataStorage } from './data-storage';
+import { cache } from './cache';
 import { BASE_URL, VIDEO_BASE_URL } from './bunny/constants';
 import type { Library, Collection, UploadProgress } from './bunny/types';
 import { LibraryData, LibraryInfo, CollectionInfo } from '@/types/library-data';
@@ -32,14 +30,7 @@ export class BunnyService {
   private initializationError: string | null = null;
 
   constructor() {
-    // Get the default API key from cache
-    const defaultApiKey = cache.get('default_api_key') || '';
-    
-    // Initialize HTTP client with base URL and default API key
-    this.httpClient = new HttpClient(
-      'https://api.bunny.net', 
-      defaultApiKey
-    );
+    this.httpClient = new HttpClient(this.baseUrl, '');
     
     // Initialize services
     this.uploadService = new UploadService(this.httpClient, '/api/proxy/video');
@@ -47,25 +38,6 @@ export class BunnyService {
     this.collectionService = new CollectionService(this.httpClient, '/api/proxy/video');
     this.videoService = new VideoService(this.httpClient, this.videoBaseUrl);
     this.bandwidthService = new BandwidthService(this.httpClient);
-
-    // Load cached library API keys from secure storage
-    this.loadSecureApiKeys();
-  }
-
-  private loadSecureApiKeys(): void {
-    try {
-      // Load all secure API keys
-      const allKeys = SecureApiKeyStorage.getAll();
-      Object.entries(allKeys).forEach(([libraryId, encryptedKey]) => {
-        const apiKey = SecureApiKeyStorage.retrieve(libraryId);
-        if (apiKey) {
-          this.httpClient.setLibraryApiKey(libraryId, apiKey);
-          secureLog('Loaded secure API key for library', { libraryId });
-        }
-      });
-    } catch (error) {
-      console.error('Error loading secure API keys:', error);
-    }
   }
 
   // Library management
@@ -128,40 +100,24 @@ export class BunnyService {
     this.bandwidthService = new BandwidthService(this.httpClient);
     this.uploadService = new UploadService(this.httpClient, this.videoBaseUrl);
 
-    // Store the API key securely
-    SecureApiKeyStorage.store('default', apiKey);
+    // Store the API key in localStorage for persistence
+    localStorage.setItem("bunny_api_key", apiKey);
     cache.set('default_api_key', apiKey);
-    secureLog('Default API key stored securely');
   };
 
   setDefaultApiKey = (apiKey: string) => {
     this.httpClient.setApiKey(apiKey);
     cache.set('default_api_key', apiKey);
-    SecureApiKeyStorage.store('default', apiKey);
-    secureLog('Default API key updated securely');
   };
 
   setLibraryApiKey = (libraryId: string, apiKey: string) => {
     // Update the library-specific API key in the HttpClient
     this.httpClient.setLibraryApiKey(libraryId, apiKey);
 
-    // Store the library-specific API key securely
-    SecureApiKeyStorage.store(libraryId, apiKey);
-    secureLog('Library API key stored securely', { libraryId });
-  };
-
-  getLibraryApiKey = (libraryId: string): string | null => {
-    return SecureApiKeyStorage.retrieve(libraryId);
-  };
-
-  removeLibraryApiKey = (libraryId: string): void => {
-    SecureApiKeyStorage.remove(libraryId);
-    secureLog('Library API key removed', { libraryId });
-  };
-
-  clearAllApiKeys = (): void => {
-    SecureApiKeyStorage.clear();
-    secureLog('All API keys cleared');
+    // Store the library-specific API key in localStorage for persistence
+    const libraryApiKeys = JSON.parse(localStorage.getItem("bunny_library_api_keys") || "{}");
+    libraryApiKeys[libraryId] = apiKey;
+    localStorage.setItem("bunny_library_api_keys", JSON.stringify(libraryApiKeys));
   };
 
   // Library data management
@@ -287,26 +243,106 @@ export class BunnyService {
         if (lib.apiKey) {
           this.httpClient.setLibraryApiKey(lib.id, lib.apiKey);
           cache.set(`library_${lib.id}_data`, lib);
-          secureLog('Cached API key for library', { libraryId: lib.id });
+          cache.set(`library_${lib.id}_api`, lib.apiKey);
         }
       });
+      
+      // Get collections for each library
+      const libraryInfos: LibraryInfo[] = await Promise.all(
+        libraries.map(async (lib) => {
+          let collections: CollectionInfo[] = [];
+          try {
+            const apiCollections = await this.getCollections(lib.id);
+            collections = apiCollections.map(col => ({
+              id: col.id,
+              guid: col.id,
+              name: col.name,
+              videoCount: 0,
+              totalSize: 0,
+              previewVideoIds: null,
+              previewImageUrls: [],
+              dateCreated: new Date().toISOString()
+            }));
+          } catch (error) {
+            console.error(`Error fetching collections for library ${lib.name}:`, error);
+          }
+          
+          const libraryInfo: LibraryInfo = {
+            id: lib.id,
+            name: lib.name,
+            apiKey: lib.apiKey,
+            videoCount: 0,
+            storageUsage: 0,
+            trafficUsage: 0,
+            dateCreated: new Date().toISOString(),
+            replicationRegions: [],
+            enabledResolutions: [],
+            bitrate240p: 0,
+            bitrate360p: 0,
+            bitrate480p: 0,
+            bitrate720p: 0,
+            bitrate1080p: 0,
+            bitrate1440p: 0,
+            bitrate2160p: 0,
+            allowDirectPlay: true,
+            enableMP4Fallback: true,
+            keepOriginalFiles: true,
+            playerKeyColor: '#000000',
+            fontFamily: 'Arial',
+            StorageZoneId: "0",
+            PullZoneId: "0",
+            collections
+          };
+          
+          return libraryInfo;
+        })
+      );
 
-      // Create library data object
-      const libraryData = {
+      const data: LibraryData = {
         lastUpdated: new Date().toISOString(),
-        libraries: libraries,
+        libraries: libraryInfos,
         mainApiKey
       };
 
-      // Save to secure storage
-      await dataStorage.saveLibraryData(libraryData);
+      // Save to persistent storage AND cache
+      console.log("About to save library data");
+      await dataStorage.saveLibraryData(data);
       
-      return libraryData;
+      // Also cache the data for immediate access
+      cache.set('library_data', data);
+      
+      console.log("Library data saved successfully");
+
+      // Verify the save worked by doing a test read
+      try {
+        const testRead = dataStorage.getLibraryData();
+        console.log("Verification read success:", !!testRead);
+      } catch (verifyError) {
+        console.error("Verification read failed:", verifyError);
+      }
+
+      showToast({
+        title: "🔄 Library Update Complete",
+        description: `Updated ${libraryInfos.length} libraries\nTotal collections: ${
+          libraryInfos.reduce((acc, lib) => acc + (lib.collections?.length || 0), 0)
+        }`,
+        variant: "success",
+        duration: 5000
+      });
+
+      return data;
+
     } catch (error) {
-      console.error("Error fetching library data:", error);
+      showToast({
+        title: "❌ Library Update Failed", 
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive",
+        duration: 5000
+      });
       throw error;
     }
   }
 }
 
+// Export a singleton instance
 export const bunnyService = new BunnyService();
