@@ -5,7 +5,17 @@ import CryptoJS from 'crypto-js';
 
 // Generate a secure encryption key from environment or fallback
 const getEncryptionKey = () => {
-  const envKey = process.env.VITE_ENCRYPTION_KEY;
+  // Check environment variable in both browser (Vite) and Node.js contexts
+  let envKey;
+  
+  if (typeof window !== 'undefined' && import.meta?.env) {
+    // Browser environment with Vite
+    envKey = import.meta.env.VITE_ENCRYPTION_KEY;
+  } else if (typeof process !== 'undefined' && process.env) {
+    // Node.js environment
+    envKey = process.env.VITE_ENCRYPTION_KEY;
+  }
+  
   if (envKey) return envKey;
   
   // Fallback to a derived key (not ideal for production)
@@ -142,8 +152,18 @@ export function validateEnvironmentSecurity() {
   const warnings = [];
   const recommendations = [];
   
-  const apiKey = process.env.VITE_BUNNY_API_KEY;
-  const encryptionKey = process.env.VITE_ENCRYPTION_KEY;
+  // Get environment variables in a cross-platform way
+  let apiKey, encryptionKey;
+  
+  if (typeof window !== 'undefined' && import.meta?.env) {
+    // Browser environment
+    apiKey = import.meta.env.VITE_BUNNY_API_KEY;
+    encryptionKey = import.meta.env.VITE_ENCRYPTION_KEY;
+  } else if (typeof process !== 'undefined' && process.env) {
+    // Node.js environment
+    apiKey = process.env.VITE_BUNNY_API_KEY;
+    encryptionKey = process.env.VITE_ENCRYPTION_KEY;
+  }
   
   // Check if API key is present
   if (!apiKey) {
@@ -164,7 +184,10 @@ export function validateEnvironmentSecurity() {
   }
   
   // Check if running in development with production keys
-  if (process.env.NODE_ENV !== 'production' && apiKey && apiKey.length > 20) {
+  const nodeEnv = (typeof window !== 'undefined' && import.meta?.env?.NODE_ENV) || 
+                  (typeof process !== 'undefined' && process.env?.NODE_ENV);
+  
+  if (nodeEnv !== 'production' && apiKey && apiKey.length > 20) {
     warnings.push('Production API key detected in development environment');
     recommendations.push('Use separate API keys for development and production');
   }
