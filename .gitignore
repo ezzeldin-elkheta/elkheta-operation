@@ -1,0 +1,54 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Environment files - NEVER commit real environment files
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# Development environment with real credentials (if accidentally created)
+.env.development.real
+.env.production.real
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+!node_modules/.vite
+
+**/tempobook/dynamic/
+**/tempobook/storyboards/
+
+core
+vite.config.
+chrome-pointer-452610-p7-53897da5c995.json
+.vercel
+
+# Additional security files
+*.key
+*.pem
+*.p12
+service-account*.json
+*credentials*.json
+
+.vercel

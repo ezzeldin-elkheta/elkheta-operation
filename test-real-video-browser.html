@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real Video API Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .url-test { margin: 10px 0; padding: 10px; background: #f9f9f9; }
+        .success { color: green; }
+        .error { color: red; }
+        button { padding: 10px 20px; margin: 5px; }
+        textarea { width: 100%; height: 200px; }
+    </style>
+</head>
+<body>
+    <h1>Real Video API Test - Bunny.net</h1>
+    
+    <div class="section">
+        <h2>Video Details</h2>
+        <p><strong>Library ID:</strong> 297723</p>
+        <p><strong>Video GUID:</strong> a9e55efa-2007-41c3-9a76-fb9770c03f45</p>
+        <p><strong>API Key:</strong> c09f034e-5b1d-4f62-9c9dad335ca9-4f70-4d6a</p>
+    </div>
+
+    <div class="section">
+        <h2>1. Fetch Video Details</h2>
+        <button onclick="fetchVideoDetails()">Fetch Video Details</button>
+        <div id="videoDetailsResult"></div>
+    </div>
+
+    <div class="section">
+        <h2>2. Test Download URLs</h2>
+        <button onclick="testDownloadUrls()">Test All Download URL Formats</button>
+        <div id="downloadUrlsResult"></div>
+    </div>
+
+    <div class="section">
+        <h2>Raw Response</h2>
+        <textarea id="rawResponse" readonly></textarea>
+    </div>
+
+    <script>
+        const LIBRARY_ID = '297723';
+        const VIDEO_GUID = 'a9e55efa-2007-41c3-9a76-fb9770c03f45';
+        const API_KEY = 'c09f034e-5b1d-4f62-9c9dad335ca9-4f70-4d6a';
+
+        async function fetchVideoDetails() {
+            const resultDiv = document.getElementById('videoDetailsResult');
+            const rawResponseDiv = document.getElementById('rawResponse');
+            
+            resultDiv.innerHTML = '<p>Fetching...</p>';
+
+            try {
+                const url = `https://video.bunnycdn.com/library/${LIBRARY_ID}/videos/${VIDEO_GUID}`;
+                
+                // Try direct fetch first
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'accept': 'application/json',
+                        'AccessKey': API_KEY
+                    }
+                });
+
+                console.log('Response status:', response.status);
+                console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
+                if (response.ok) {
+                    const data = await response.json();
+                    rawResponseDiv.value = JSON.stringify(data, null, 2);
+                    
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h3>✅ Video Details Fetched Successfully</h3>
+                            <p><strong>Title:</strong> ${data.title || 'N/A'}</p>
+                            <p><strong>Status:</strong> ${data.status}</p>
+                            <p><strong>Available Resolutions:</strong> ${data.availableResolutions || 'N/A'}</p>
+                            <p><strong>Has MP4 Fallback:</strong> ${data.hasMP4Fallback}</p>
+                            <p><strong>Video Library ID:</strong> ${data.videoLibraryId}</p>
+                        </div>
+                    `;
+
+                    // Store the video data for URL testing
+                    window.videoData = data;
+                } else {
+                    const errorText = await response.text();
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h3>❌ Failed to fetch video details</h3>
+                            <p><strong>Status:</strong> ${response.status}</p>
+                            <p><strong>Error:</strong> ${errorText}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Fetch error:', error);
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h3>❌ Network Error</h3>
+                        <p>${error.message}</p>
+                        <p><em>Note: CORS errors are expected when testing from browser. Use server proxy instead.</em></p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testDownloadUrls() {
+            const resultDiv = document.getElementById('downloadUrlsResult');
+            
+            // Test URLs even without video data
+            const testQualities = ['240p', '360p', '480p', '720p', '1080p'];
+            const defaultQuality = '720p';
+            
+            const testUrls = [
+                // Current problematic URL
+                {
+                    name: '❌ Current URL (iframe/play)',
+                    url: `https://iframe.mediadelivery.net/play/${LIBRARY_ID}/${VIDEO_GUID}.mp4?resolution=${defaultQuality}`,
+                    description: 'This is what we currently use - returns 404'
+                },
+                
+                // CDN patterns
+                {
+                    name: '🎯 CDN Pattern 1 (vz-)',
+                    url: `https://vz-${LIBRARY_ID}.b-cdn.net/${VIDEO_GUID}/${defaultQuality}/video.mp4`,
+                    description: 'Most common CDN pattern for video files'
+                },
+                {
+                    name: '🎯 CDN Pattern 2 (video-)',
+                    url: `https://video-${LIBRARY_ID}.b-cdn.net/${VIDEO_GUID}/${defaultQuality}/video.mp4`,
+                    description: 'Alternative CDN pattern'
+                },
+                
+                // MP4 fallback
+                {
+                    name: '🎯 MP4 Fallback',
+                    url: `https://vz-${LIBRARY_ID}.b-cdn.net/${VIDEO_GUID}/mp4/video.mp4`,
+                    description: 'MP4 fallback without specific quality'
+                },
+                
+                // API download endpoints
+                {
+                    name: '🎯 API Download',
+                    url: `https://video.bunnycdn.com/library/${LIBRARY_ID}/videos/${VIDEO_GUID}/download?resolution=${defaultQuality}`,
+                    description: 'Direct API download endpoint'
+                },
+                
+                // Embed with download
+                {
+                    name: '🎯 Embed Download',
+                    url: `https://iframe.mediadelivery.net/embed/${LIBRARY_ID}/${VIDEO_GUID}?download=true&resolution=${defaultQuality}`,
+                    description: 'Embed iframe with download parameter'
+                },
+                
+                // Alternative formats
+                {
+                    name: '🎯 Play with Quality',
+                    url: `https://iframe.mediadelivery.net/play/${LIBRARY_ID}/${VIDEO_GUID}/${defaultQuality}.mp4`,
+                    description: 'Play URL with quality in path'
+                }
+            ];
+
+            let html = '<h3>Testing Download URL Formats</h3>';
+            
+            for (const testUrl of testUrls) {
+                html += `
+                    <div class="url-test">
+                        <h4>${testUrl.name}</h4>
+                        <p><strong>URL:</strong> <a href="${testUrl.url}" target="_blank">${testUrl.url}</a></p>
+                        <p><strong>Description:</strong> ${testUrl.description}</p>
+                        <button onclick="testSingleUrl('${testUrl.url}', '${testUrl.name}')">Test URL</button>
+                        <div id="result_${testUrl.name.replace(/[^a-zA-Z0-9]/g, '_')}"></div>
+                    </div>
+                `;
+            }
+            
+            html += `
+                <div style="margin-top: 20px; padding: 15px; background: #e7f3ff; border-left: 4px solid #2196F3;">
+                    <h4>💡 Recommended Testing Approach:</h4>
+                    <ol>
+                        <li>Click each "Test URL" button to check if the URL responds</li>
+                        <li>Right-click working URLs and "Save link as..." to test actual download</li>
+                        <li>Look for URLs that return video files instead of 404 errors</li>
+                        <li>The working pattern will be used to fix the download functionality</li>
+                    </ol>
+                </div>
+            `;
+            
+            resultDiv.innerHTML = html;
+        }
+
+        async function testSingleUrl(url, name) {
+            const resultId = `result_${name.replace(/[^a-zA-Z0-9]/g, '_')}`;
+            const resultDiv = document.getElementById(resultId);
+            
+            resultDiv.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                // Use HEAD request to check if URL exists without downloading
+                const response = await fetch(url, { 
+                    method: 'HEAD',
+                    mode: 'no-cors' // This might help with CORS issues
+                });
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `<p class="success">✅ URL appears to be accessible (${response.status})</p>`;
+                } else {
+                    resultDiv.innerHTML = `<p class="error">❌ URL returned ${response.status}</p>`;
+                }
+            } catch (error) {
+                // For CORS blocked requests, we can't determine status, but we can still provide the link
+                resultDiv.innerHTML = `
+                    <p class="error">❌ Cannot test due to CORS restrictions</p>
+                    <p><a href="${url}" target="_blank">Click here to test manually in new tab</a></p>
+                `;
+            }
+        }
+
+        // Auto-load when page loads
+        window.onload = function() {
+            console.log('Page loaded. Ready to test video API.');
+            console.log('Library ID:', LIBRARY_ID);
+            console.log('Video GUID:', VIDEO_GUID);
+            
+            // Add a note about testing
+            document.body.insertAdjacentHTML('afterbegin', `
+                <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; margin-bottom: 20px;">
+                    <h3>🔧 Testing Instructions</h3>
+                    <ol>
+                        <li><strong>Fetch Video Details:</strong> This will likely fail due to CORS, but shows the API structure</li>
+                        <li><strong>Test Download URLs:</strong> Click individual test buttons and manually check links in new tabs</li>
+                        <li><strong>Check Server Proxy:</strong> Use the server proxy at <code>http://localhost:3000</code> for API calls</li>
+                    </ol>
+                </div>
+            `);
+        };
+    </script>
+</body>
+</html>

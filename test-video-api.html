@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Video API</title>
+</head>
+<body>
+    <h1>Test Video API Response</h1>
+    <button onclick="testVideoDetails()">Test Real Video Details</button>
+    <div id="output"></div>
+
+    <script>        async function testVideoDetails() {
+            const libraryId = '297723';
+            const videoGuid = 'a9e55efa-2007-41c3-9a76-fb9770c03f45';
+            // Get API key from environment or prompt user
+            const apiKey = prompt('Enter your Bunny.net API key:') || 'your_api_key_here';
+            
+            if (apiKey === 'your_api_key_here') {
+                alert('Please enter a valid API key');
+                return;
+            }
+            
+            try {
+                console.log('Testing video API...');
+                const response = await fetch(`/api/proxy/video/library/${libraryId}/videos/${videoGuid}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'AccessKey': apiKey
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('Video Details Response:', data);
+                
+                document.getElementById('output').innerHTML = `
+                    <h2>Video Details Response:</h2>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+                
+                // Test different potential download URL formats
+                testDownloadUrls(libraryId, videoGuid, data);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('output').innerHTML = `
+                    <h2>Error:</h2>
+                    <pre>${error.message}</pre>
+                `;
+            }
+        }
+        
+        function testDownloadUrls(libraryId, videoGuid, videoData) {
+            console.log('Testing different URL formats:');
+            
+            const urlFormats = [
+                `https://iframe.mediadelivery.net/play/${libraryId}/${videoGuid}`,
+                `https://iframe.mediadelivery.net/play/${libraryId}/${videoGuid}.mp4`,
+                `https://video.bunnycdn.com/play/${libraryId}/${videoGuid}`,
+                `https://video.bunnycdn.com/play/${libraryId}/${videoGuid}.mp4`,
+                `https://${libraryId}.b-cdn.net/${videoGuid}.mp4`,
+                `https://vz-${libraryId}.b-cdn.net/${videoGuid}.mp4`
+            ];
+            
+            urlFormats.forEach(url => {
+                console.log(`Testing URL: ${url}`);
+            });
+            
+            // Test with quality parameters if available resolutions exist
+            if (videoData.availableResolutions) {
+                console.log('Available resolutions:', videoData.availableResolutions);
+            }
+        }
+    </script>
+</body>
+</html>

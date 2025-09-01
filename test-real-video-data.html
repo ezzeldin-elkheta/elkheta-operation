@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Real Video Data</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 5px; overflow: auto; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        button { padding: 10px 15px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .error { color: red; }
+        .success { color: green; }
+        .warning { color: orange; }
+    </style>
+</head>
+<body>
+    <h1>Test Real Video Data</h1>
+    
+    <div class="test-section">
+        <h2>1. Test Real Video API</h2>
+        <button onclick="testRealVideoAPI()">Test Real Video API Call</button>
+        <div id="api-output"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Test Download URLs</h2>
+        <button onclick="testDownloadURLs()">Test Different Download URL Formats</button>
+        <div id="download-output"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Test Direct Download</h2>
+        <button onclick="testDirectDownload()">Test Direct Download (720p)</button>
+        <div id="direct-output"></div>
+    </div>
+
+    <script>
+        // Real video data from user
+        const REAL_VIDEO = {
+            libraryId: '297723',
+            videoGuid: 'a9e55efa-2007-41c3-9a76-fb9770c03f45',
+            apiKey: 'c09f034e-5b1d-4f62-9c9dad335ca9-4f70-4d6a'
+        };
+
+        async function testRealVideoAPI() {
+            const output = document.getElementById('api-output');
+            output.innerHTML = '<p>Testing real video API...</p>';
+            
+            try {
+                // Use the exact API call format from user's code
+                const url = `https://video.bunnycdn.com/library/${REAL_VIDEO.libraryId}/videos/${REAL_VIDEO.videoGuid}`;
+                const options = {
+                    method: 'GET',
+                    headers: {
+                        accept: 'application/json',
+                        AccessKey: REAL_VIDEO.apiKey
+                    }
+                };
+
+                console.log('Direct API call to:', url);
+                console.log('Headers:', options.headers);
+
+                // Try direct call first
+                let response;
+                try {
+                    response = await fetch(url, options);
+                    console.log('Direct response status:', response.status);
+                } catch (directError) {
+                    console.log('Direct call failed (CORS expected):', directError.message);
+                    
+                    // Try through proxy
+                    const proxyUrl = `/api/proxy/video/library/${REAL_VIDEO.libraryId}/videos/${REAL_VIDEO.videoGuid}`;
+                    console.log('Trying proxy URL:', proxyUrl);
+                    
+                    response = await fetch(proxyUrl, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'AccessKey': REAL_VIDEO.apiKey
+                        }
+                    });
+                }
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                console.log('Video data received:', data);
+
+                output.innerHTML = `
+                    <div class="success">✓ API call successful!</div>
+                    <h3>Video Data:</h3>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+
+                // Store for other tests
+                window.videoData = data;
+                
+                return data;
+
+            } catch (error) {
+                console.error('API Error:', error);
+                output.innerHTML = `
+                    <div class="error">✗ API call failed: ${error.message}</div>
+                    <p>Check console for details</p>
+                `;
+                throw error;
+            }
+        }
+
+        async function testDownloadURLs() {
+            const output = document.getElementById('download-output');
+            output.innerHTML = '<p>Testing different download URL formats...</p>';
+
+            const { libraryId, videoGuid } = REAL_VIDEO;
+
+            // Different potential download URL formats
+            const urlFormats = [
+                // Current problematic format
+                {
+                    name: 'Current iframe format',
+                    url: `https://iframe.mediadelivery.net/play/${libraryId}/${videoGuid}`,
+                    type: 'stream'
+                },
+                {
+                    name: 'Current iframe with .mp4',
+                    url: `https://iframe.mediadelivery.net/play/${libraryId}/${videoGuid}.mp4`,
+                    type: 'stream'
+                },
+                {
+                    name: 'Current iframe with resolution',
+                    url: `https://iframe.mediadelivery.net/play/${libraryId}/${videoGuid}.mp4?resolution=720p`,
+                    type: 'stream'
+                },
+                
+                // Direct CDN formats
+                {
+                    name: 'Direct CDN (vz- prefix)',
+                    url: `https://vz-${libraryId}.b-cdn.net/${videoGuid}/play_720p.mp4`,
+                    type: 'cdn'
+                },
+                {
+                    name: 'Direct CDN (simple)',
+                    url: `https://${libraryId}.b-cdn.net/${videoGuid}/play_720p.mp4`,
+                    type: 'cdn'
+                },
+                {
+                    name: 'Direct CDN with original quality',
+                    url: `https://vz-${libraryId}.b-cdn.net/${videoGuid}/original.mp4`,
+                    type: 'cdn'
+                },
+                
+                // API-based download
+                {
+                    name: 'API download endpoint',
+                    url: `https://video.bunnycdn.com/library/${libraryId}/videos/${videoGuid}/download`,
+                    type: 'api'
+                },
+                
+                // Video embed formats
+                {
+                    name: 'Video embed download',
+                    url: `https://iframe.mediadelivery.net/embed/${libraryId}/${videoGuid}?download=true`,
+                    type: 'embed'
+                }
+            ];
+
+            let results = [];
+            output.innerHTML = '<p>Testing URLs...</p>';
+
+            for (let i = 0; i < urlFormats.length; i++) {
+                const format = urlFormats[i];
+                console.log(`Testing ${i + 1}/${urlFormats.length}: ${format.name}`);
+                
+                try {
+                    // Use HEAD request to check if URL exists without downloading
+                    const response = await fetch(format.url, { 
+                        method: 'HEAD',
+                        mode: 'cors' 
+                    });
+                    
+                    const result = {
+                        name: format.name,
+                        url: format.url,
+                        status: response.status,
+                        statusText: response.statusText,
+                        contentType: response.headers.get('Content-Type'),
+                        contentLength: response.headers.get('Content-Length'),
+                        success: response.ok
+                    };
+                    
+                    results.push(result);
+                    console.log(`Result: ${response.status} ${response.statusText}`);
+                    
+                } catch (error) {
+                    const result = {
+                        name: format.name,
+                        url: format.url,
+                        error: error.message,
+                        success: false
+                    };
+                    
+                    results.push(result);
+                    console.log(`Error: ${error.message}`);
+                }
+            }
+
+            // Display results
+            let html = '<h3>URL Test Results:</h3>';
+            results.forEach(result => {
+                const statusClass = result.success ? 'success' : 'error';
+                html += `
+                    <div class="test-section">
+                        <h4 class="${statusClass}">${result.success ? '✓' : '✗'} ${result.name}</h4>
+                        <p><strong>URL:</strong> ${result.url}</p>
+                        ${result.status ? `<p><strong>Status:</strong> ${result.status} ${result.statusText}</p>` : ''}
+                        ${result.contentType ? `<p><strong>Content-Type:</strong> ${result.contentType}</p>` : ''}
+                        ${result.contentLength ? `<p><strong>Size:</strong> ${result.contentLength} bytes</p>` : ''}
+                        ${result.error ? `<p class="error"><strong>Error:</strong> ${result.error}</p>` : ''}
+                    </div>
+                `;
+            });
+
+            output.innerHTML = html;
+            
+            // Store successful URLs
+            window.downloadResults = results.filter(r => r.success);
+            
+            return results;
+        }
+
+        async function testDirectDownload() {
+            const output = document.getElementById('direct-output');
+            
+            if (!window.downloadResults || window.downloadResults.length === 0) {
+                output.innerHTML = '<div class="warning">⚠ Please run URL tests first to find working download URLs</div>';
+                return;
+            }
+
+            const workingUrl = window.downloadResults[0].url;
+            
+            try {
+                output.innerHTML = `<p>Testing download from: ${workingUrl}</p>`;
+                
+                // Create download link
+                const link = document.createElement('a');
+                link.href = workingUrl;
+                link.download = `test_video_720p.mp4`;
+                link.target = '_blank';
+                
+                // Try the download
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                output.innerHTML = `
+                    <div class="success">✓ Download initiated!</div>
+                    <p>URL: ${workingUrl}</p>
+                    <p>Check your downloads folder</p>
+                `;
+                
+            } catch (error) {
+                output.innerHTML = `
+                    <div class="error">✗ Download failed: ${error.message}</div>
+                `;
+            }
+        }
+
+        // Auto-run API test on page load
+        window.addEventListener('load', () => {
+            console.log('Page loaded, ready for testing');
+            console.log('Real video data:', REAL_VIDEO);
+        });
+    </script>
+</body>
+</html>

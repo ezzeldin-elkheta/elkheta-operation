@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bunny.net Video Download Test - Python Approach</title>
+    <style>
+        body {
+            font-family: 'Consolas', 'Monaco', monospace;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            color: white;
+        }
+        
+        .controls {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #444;
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #ccc;
+            font-weight: bold;
+        }
+        
+        input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            background: #3a3a3a;
+            color: #e0e0e0;
+            font-family: inherit;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            margin-right: 10px;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .output {
+            background: #000;
+            color: #0f0;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            max-height: 600px;
+            overflow-y: auto;
+            border: 1px solid #333;
+            margin-top: 20px;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        
+        .status-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .status-error {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .status-warning {
+            background: #ffc107;
+            color: black;
+        }
+        
+        .url-test-results {
+            background: #2d2d2d;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        
+        .url-item {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            background: #3a3a3a;
+            border-left: 4px solid #666;
+        }
+        
+        .url-item.working {
+            border-left-color: #28a745;
+            background: #1a3a2a;
+        }
+        
+        .url-item.failed {
+            border-left-color: #dc3545;
+            background: #3a1a1a;
+        }
+        
+        .download-section {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border: 1px solid #444;
+        }
+        
+        .quality-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        
+        .quality-btn {
+            background: #444;
+            color: #ccc;
+            border: 1px solid #666;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .quality-btn:hover {
+            background: #555;
+        }
+        
+        .quality-btn.available {
+            background: #28a745;
+            color: white;
+            border-color: #28a745;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #444;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🐰 Bunny.net Video Download Test</h1>
+        <p>Python Approach Implementation in JavaScript</p>
+    </div>
+
+    <div class="controls">
+        <h3>🔧 Video Configuration</h3>
+        <div class="input-group">
+            <label for="accessKey">Access Key:</label>
+            <input type="text" id="accessKey" value="7eabe18c-4c2f-4921-b3af4531b8a7-01b1-481b" placeholder="Enter Bunny.net Access Key">
+        </div>
+        
+        <div class="input-group">
+            <label for="libraryId">Library ID:</label>
+            <input type="text" id="libraryId" value="373439" placeholder="Enter Library ID">
+        </div>
+        
+        <div class="input-group">
+            <label for="videoId">Video ID:</label>
+            <input type="text" id="videoId" value="dc3f5a40-83f1-49f8-aac3-95dfc86c0632" placeholder="Enter Video ID">
+        </div>
+        
+        <button onclick="startTest()" id="testBtn">🚀 Start Test</button>
+        <button onclick="clearOutput()" id="clearBtn">🗑️ Clear Output</button>
+        <button onclick="exportResults()" id="exportBtn" disabled>📄 Export Results</button>
+    </div>
+
+    <div class="download-section" id="downloadSection" style="display: none;">
+        <h3>📥 Download Options</h3>
+        <p>Available video qualities:</p>
+        <div class="quality-buttons" id="qualityButtons"></div>
+        <div class="progress-bar" id="progressBar" style="display: none;">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div id="downloadStatus"></div>
+    </div>
+
+    <div class="output" id="output">
+        🏁 Ready to test Bunny.net video download functionality...
+        
+📋 This test will:
+   1. Fetch video details from Bunny.net API
+   2. Analyze available video data and properties
+   3. Generate multiple potential download URL patterns
+   4. Test each URL pattern for accessibility
+   5. Report working URLs and offer download options
+   
+Click "Start Test" to begin!
+    </div>
+
+    <script>
+        let testResults = {};
+        let workingUrls = [];
+        
+        function log(message, type = 'info') {
+            const output = document.getElementById('output');
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warning' ? '⚠️' : 'ℹ️';
+            output.textContent += `\n[${timestamp}] ${prefix} ${message}`;
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        function clearOutput() {
+            document.getElementById('output').textContent = '🏁 Output cleared. Ready for new test...';
+            document.getElementById('downloadSection').style.display = 'none';
+            document.getElementById('exportBtn').disabled = true;
+            workingUrls = [];
+            testResults = {};
+        }
+        
+        function showProgress(percent) {
+            const progressBar = document.getElementById('progressBar');
+            const progressFill = document.getElementById('progressFill');
+            progressBar.style.display = 'block';
+            progressFill.style.width = percent + '%';
+        }
+        
+        function hideProgress() {
+            document.getElementById('progressBar').style.display = 'none';
+        }
+        
+        async function startTest() {
+            const testBtn = document.getElementById('testBtn');
+            const accessKey = document.getElementById('accessKey').value.trim();
+            const libraryId = document.getElementById('libraryId').value.trim();
+            const videoId = document.getElementById('videoId').value.trim();
+            
+            if (!accessKey || !libraryId || !videoId) {
+                log('Please fill in all required fields', 'error');
+                return;
+            }
+            
+            testBtn.disabled = true;
+            testBtn.textContent = '🔄 Testing...';
+            workingUrls = [];
+            
+            try {
+                clearOutput();
+                log('🚀 Starting Video Download Test (Python Approach)');
+                log('=' .repeat(50));
+                log(`🎯 Testing with Library ID: ${libraryId}, Video ID: ${videoId}`);
+                
+                showProgress(10);
+                
+                // Step 1: Get video details
+                log('🔍 Step 1: Fetching video details from Bunny.net API...');
+                const videoData = await fetchVideoDetails(accessKey, libraryId, videoId);
+                
+                if (!videoData) {
+                    log('❌ Failed to fetch video details', 'error');
+                    return;
+                }
+                
+                showProgress(30);
+                
+                // Step 2: Analyze video data
+                log('📊 Step 2: Analyzing video data...');
+                analyzeVideoData(videoData);
+                
+                showProgress(50);
+                
+                // Step 3: Generate potential URLs
+                log('🔧 Step 3: Generating potential download URLs...');
+                const urlPatterns = generateUrlPatterns(libraryId, videoId, videoData);
+                
+                showProgress(60);
+                
+                // Step 4: Test URLs
+                log('🧪 Step 4: Testing URL accessibility...');
+                await testAllUrls(urlPatterns);
+                
+                showProgress(90);
+                
+                // Step 5: Show results
+                log('📋 Step 5: Displaying results...');
+                displayResults();
+                
+                showProgress(100);
+                setTimeout(hideProgress, 1000);
+                
+                testResults = { videoData, urlPatterns, workingUrls };
+                document.getElementById('exportBtn').disabled = false;
+                
+            } catch (error) {
+                log(`💥 Test failed: ${error.message}`, 'error');
+            } finally {
+                testBtn.disabled = false;
+                testBtn.textContent = '🚀 Start Test';
+            }
+        }
+        
+        async function fetchVideoDetails(accessKey, libraryId, videoId) {
+            try {
+                const url = `https://video.bunnycdn.com/library/${libraryId}/videos/${videoId}`;
+                log(`📡 Fetching from: ${url}`);
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        "AccessKey": accessKey,
+                        "accept": "application/json"
+                    }
+                });
+                
+                log(`📊 Response status: ${response.status}`);
+                
+                if (response.status === 200) {
+                    const data = await response.json();
+                    log('✅ Video details fetched successfully', 'success');
+                    return data;
+                } else {
+                    const errorText = await response.text();
+                    log(`❌ API Error ${response.status}: ${errorText}`, 'error');
+                    return null;
+                }
+            } catch (error) {
+                log(`💥 Network error: ${error.message}`, 'error');
+                return null;
+            }
+        }
+        
+        function analyzeVideoData(videoData) {
+            log('\n=== 📹 Video Data Analysis ===');
+            log(`Title: ${videoData.title || 'N/A'}`);
+            log(`GUID: ${videoData.guid || 'N/A'}`);
+            log(`Status: ${videoData.status || 'N/A'}`);
+            log(`Available Resolutions: ${videoData.availableResolutions || 'N/A'}`);
+            log(`Has MP4 Fallback: ${videoData.hasMP4Fallback || 'N/A'}`);
+            log(`Length: ${videoData.length || 'N/A'} seconds`);
+            log(`Dimensions: ${videoData.width || 'N/A'}x${videoData.height || 'N/A'}`);
+            log(`Frame Rate: ${videoData.framerate || 'N/A'}`);
+            
+            if (videoData.hlsUrl) {
+                log(`✅ HLS URL found: ${videoData.hlsUrl}`, 'success');
+            } else {
+                log('❌ No HLS URL found in video data', 'warning');
+            }
+        }
+        
+        function generateUrlPatterns(libraryId, videoId, videoData) {
+            const qualities = ['720p', '480p', '360p', '1080p'];
+            const patterns = {};
+            
+            log('\n🔧 Generating URL patterns for each quality...');
+            
+            qualities.forEach(quality => {
+                patterns[quality] = [
+                    `https://vz-${libraryId}.b-cdn.net/${videoId}/${quality}/video.mp4`,
+                    `https://video-${libraryId}.b-cdn.net/${videoId}/${quality}/video.mp4`,
+                    `https://iframe.mediadelivery.net/play/${libraryId}/${videoId}/${quality}.mp4`,
+                    `https://iframe.mediadelivery.net/embed/${libraryId}/${videoId}?download=true&resolution=${quality}`,
+                    `https://video.bunnycdn.com/library/${libraryId}/videos/${videoId}/download?resolution=${quality}`,
+                ];
+                
+                log(`📋 Generated ${patterns[quality].length} patterns for ${quality}`);
+            });
+            
+            return patterns;
+        }
+        
+        async function testAllUrls(urlPatterns) {
+            workingUrls = [];
+            
+            for (const [quality, urls] of Object.entries(urlPatterns)) {
+                log(`\n🎬 Testing ${quality} quality...`);
+                
+                for (let i = 0; i < urls.length; i++) {
+                    const url = urls[i];
+                    log(`   Testing pattern ${i + 1}/${urls.length}...`);
+                    
+                    const isWorking = await testSingleUrl(url);
+                    if (isWorking) {
+                        workingUrls.push({ quality, url, pattern: i + 1 });
+                        log(`   ✅ Pattern ${i + 1} works!`, 'success');
+                        break; // Found working URL for this quality
+                    } else {
+                        log(`   ❌ Pattern ${i + 1} failed`, 'error');
+                    }
+                }
+            }
+        }
+        
+        async function testSingleUrl(url) {
+            try {
+                const response = await fetch(url, { method: 'HEAD' });
+                return response.status === 200;
+            } catch (error) {
+                return false;
+            }
+        }
+        
+        function displayResults() {
+            log('\n📋 TEST RESULTS:');
+            log('=' .repeat(30));
+            
+            if (workingUrls.length > 0) {
+                log('✅ Working URLs found:', 'success');
+                workingUrls.forEach(({ quality, url, pattern }) => {
+                    log(`   ${quality}: Pattern ${pattern}`);
+                });
+                
+                setupDownloadOptions();
+            } else {
+                log('❌ No working URLs found', 'error');
+                log('💡 Possible reasons:');
+                log('   - Video requires authentication');
+                log('   - Different URL pattern needed');
+                log('   - Video not publicly accessible');
+            }
+        }
+        
+        function setupDownloadOptions() {
+            const downloadSection = document.getElementById('downloadSection');
+            const qualityButtons = document.getElementById('qualityButtons');
+            
+            downloadSection.style.display = 'block';
+            qualityButtons.innerHTML = '';
+            
+            const allQualities = ['1080p', '720p', '480p', '360p'];
+            
+            allQualities.forEach(quality => {
+                const button = document.createElement('button');
+                button.className = 'quality-btn';
+                button.textContent = quality;
+                
+                const workingUrl = workingUrls.find(u => u.quality === quality);
+                if (workingUrl) {
+                    button.classList.add('available');
+                    button.onclick = () => downloadVideo(workingUrl.url, quality);
+                } else {
+                    button.disabled = true;
+                }
+                
+                qualityButtons.appendChild(button);
+            });
+        }
+        
+        async function downloadVideo(url, quality) {
+            const downloadStatus = document.getElementById('downloadStatus');
+            
+            try {
+                downloadStatus.innerHTML = `⬇️ Downloading ${quality} video...`;
+                log(`🎬 Starting download for ${quality} quality`);
+                
+                const response = await fetch(url);
+                
+                if (response.status === 200) {
+                    const blob = await response.blob();
+                    const downloadUrl = window.URL.createObjectURL(blob);
+                    
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = `video_${quality}_${Date.now()}.mp4`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(downloadUrl);
+                    
+                    downloadStatus.innerHTML = `✅ Download completed for ${quality}!`;
+                    log(`✅ Download successful for ${quality}`, 'success');
+                } else {
+                    downloadStatus.innerHTML = `❌ Download failed for ${quality}`;
+                    log(`❌ Download failed for ${quality}: Status ${response.status}`, 'error');
+                }
+            } catch (error) {
+                downloadStatus.innerHTML = `💥 Download error for ${quality}`;
+                log(`💥 Download error for ${quality}: ${error.message}`, 'error');
+            }
+        }
+        
+        function exportResults() {
+            const results = {
+                timestamp: new Date().toISOString(),
+                testResults,
+                workingUrls,
+                summary: {
+                    totalUrlsTested: Object.values(testResults.urlPatterns || {}).flat().length,
+                    workingUrlsFound: workingUrls.length,
+                    availableQualities: workingUrls.map(u => u.quality)
+                }
+            };
+            
+            const dataStr = JSON.stringify(results, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `bunny_video_test_results_${Date.now()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            log('📄 Test results exported to JSON file', 'success');
+        }
+    </script>
+</body>
+</html>
